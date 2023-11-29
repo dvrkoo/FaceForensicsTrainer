@@ -127,15 +127,14 @@ if __name__ == "__main__":
 
     args = p.parse_args()
 
-    data_root = "/users/nick/neuraltexture_crop/"  # the root folder containing 'real' and 'fake' subfolders
+    data_root = "/users/nick/deepfake_crops/"  # the root folder containing 'real' and 'fake' subfolders
     train_loader, val_loader, test_loader = load_dataset(data_root)
     model = load_model(args.pretrained)
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
     criterion = nn.CrossEntropyLoss()
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
     writer = SummaryWriter(
-        "./SummaryWriter/xception_Neuraltextures"
-        + datetime.now().strftime("%Y%m%d-%H%M%S")
+        "./SummaryWriter/xception_deepfake_1" + datetime.now().strftime("%Y%m%d-%H%M%S")
     )
 
     # move model to cuda
