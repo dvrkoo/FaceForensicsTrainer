@@ -2,7 +2,6 @@ import sys
 
 import cv2
 import torch
-from PyQt5.QtCore import QTimer
 from PyQt5.QtGui import (
     QImage,
     QPixmap,
@@ -10,16 +9,16 @@ from PyQt5.QtGui import (
 from PyQt5.QtWidgets import (
     QApplication,
     QFileDialog,
+    QHBoxLayout,
     QLabel,
     QPushButton,
     QVBoxLayout,
     QWidget,
-    QHBoxLayout,
+    QComboBox,
 )
 
 from playerModules import model_functions
 
-models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
 from playerModules.progressbar import ProgressBarWithTimeLabel
 from playerModules.timer import VideoTimer
 
@@ -33,6 +32,7 @@ class VideoPlayerApp(QWidget):
         # Set up UI
         self.setup_ui()
         self.models, self.detector = model_functions.load_models()
+        self.selected_model = None
 
         # Initialize video capture to None
         self.cap = None
@@ -48,9 +48,20 @@ class VideoPlayerApp(QWidget):
 
         self.is_fake = False
 
+    def model_selection_changed(self, index):
+        # Slot to be triggered when the selected model changes
+        selected_model = models_index[index - 1] if index > 0 else None
+        self.selected_model = selected_model  # Store the selected model in the class
+
     def setup_ui(self):
         # Set up layout
         layout = QVBoxLayout(self)
+
+        # Add model selection
+        self.model_combo_box = QComboBox(self)
+        self.model_combo_box.addItems(["All Models"] + models_index)
+        self.model_combo_box.currentIndexChanged.connect(self.model_selection_changed)
+        layout.addWidget(self.model_combo_box)
 
         # Add a button to open a file dialog
         self.load_button = QPushButton("Load Video", self)
@@ -118,9 +129,27 @@ class VideoPlayerApp(QWidget):
         if self.playing:
             self.play_button.setText("Pause")
             self.timer.start(33)  # ~30 fps
+            self.load_button.hide()
         else:
             self.play_button.setText("Play")
+            self.load_button.show()
             self.timer.stop()
+
+    def setup_predictions_text(self, predictions):
+        if self.selected_model is None:
+            self.predictions_label.setText(
+                "Model Predictions:\n"
+                + "\n".join(
+                    [
+                        f"{model}: {prediction:.4f}"
+                        for model, prediction in zip(models_index, predictions)
+                    ]
+                )
+            )
+        else:
+            self.predictions_label.setText(
+                f"Model Predictions:\n{self.selected_model}: {predictions[0]:.4f}"
+            )
 
     def timerEvent(self):
         # Read a frame from the video
@@ -146,14 +175,11 @@ class VideoPlayerApp(QWidget):
                         index,
                         fake,
                         predictions,
-                    ) = model_functions.predict_with_model(input_tensor, self.models)
-                    predictions_text = "Model Predictions:\n" + "\n".join(
-                        [
-                            f"{model}: {prediction:.4f}"
-                            for model, prediction in zip(models_index, predictions)
-                        ]
+                    ) = model_functions.predict_with_model(
+                        input_tensor, self.models, selected_model=self.selected_model
                     )
-                    self.predictions_label.setText(predictions_text)
+
+                    self.setup_predictions_text(predictions)
                     self.update_label(face_1, fake, index, frame)
                 # Resize the frame to the fixed size
                 frame_resized = cv2.resize(frame, (self.video_width, self.video_height))
@@ -174,7 +200,7 @@ class VideoPlayerApp(QWidget):
                 self.playing = False
                 self.play_button.setText("Play")
                 self.load_button.show()
-                self.kill_timer()
+                self.timer.stop()
 
     def opencv_to_qimage(self, frame):
         # Convert the OpenCV image to a QImage

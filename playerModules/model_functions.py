@@ -9,17 +9,17 @@ from network.models import model_selection
 
 device = torch.device("cuda" if torch.cuda.is_available() else "mps")
 
+model_names = [
+    "faceswap",
+    "deepfake",
+    "neuraltextures",
+    "face2face",
+    "faceshifter",
+]
+
 
 def load_models():
     models = []
-    model_names = [
-        "faceswap",
-        "deepfake",
-        "neuraltextures",
-        "face2face",
-        "faceshifter",
-    ]
-
     for model_name in model_names:
         model, *_ = model_selection(modelname="xception", num_out_classes=2)
         print(f"Loading {model_name} Model")
@@ -79,13 +79,33 @@ def preprocess_input(face_roi):
     return preprocessed_image
 
 
-def predict_with_model(input_tensor, models, post_fuction=nn.Softmax(dim=1)):
+def predict_with_selected_model(input_tensor, model, post_fuction=nn.Softmax(dim=1)):
+    best_class = 0
+    with torch.no_grad():
+        output = post_fuction(model(input_tensor))
+    if torch.argmax(output, dim=1):
+        best_class = 1
+    return output[0][1].item()
+
+
+def predict_with_model(
+    input_tensor, models, selected_model=None, post_function=nn.Softmax(dim=1)
+):
+    if selected_model is not None and selected_model in model_names:
+        best_class = 0
+        # If a specific model is selected, only predict with that model
+        model_index = model_names.index(selected_model)
+        with torch.no_grad():
+            output = post_function(models[model_index](input_tensor))
+        if torch.argmax(output, dim=1):
+            best_class = 1
+        return output, model_index, best_class, [output[0][1].item()]
     # Use your trained model to predict whether the face is fake or genuine
     outputs = []
     predictions = []
     with torch.no_grad():
         for model in range(len(models)):
-            outputs.append(post_fuction(models[model](input_tensor)))
+            outputs.append(post_function(models[model](input_tensor)))
 
     best_prediction = None
     best_index = None
