@@ -143,6 +143,7 @@ class VideoPlayerApp(QWidget):
     def update_predictions(self, predictions):
         self.prediction_bar.set_predictions(predictions, models_index)
 
+    # TODO delete this function
     def setup_predictions_text(self, predictions):
         if self.selected_model is None:
             self.predictions_label.setText(
@@ -188,7 +189,7 @@ class VideoPlayerApp(QWidget):
                     )
 
                     self.update_predictions(predictions)
-                    self.setup_predictions_text(predictions)
+                    # self.setup_predictions_text(predictions)
                     self.update_label(face_1, fake, index, frame)
                 # Resize the frame to the fixed size
                 frame_resized = cv2.resize(frame, (self.video_width, self.video_height))

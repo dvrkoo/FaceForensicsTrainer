@@ -34,13 +34,13 @@ class PredictionsBarGraph(QWidget):
         font.setPointSize(10)
         painter.setFont(font)
 
-        bar_width = self.width() / len(self.predictions)
+        bar_height = self.height() / len(self.predictions)
         max_prediction = max(self.predictions)
 
         for i, prediction in enumerate(self.predictions):
-            bar_height = prediction / max_prediction * self.height()
-            bar_x = int(i * bar_width)  # Convert to int
-            bar_y = int(self.height() - bar_height)  # Convert to int
+            bar_width = prediction / max_prediction * self.width()
+            bar_x = 0  # Convert to int
+            bar_y = int(bar_height * i)  # Convert to int
             bar_width = int(bar_width)  # Convert to int
             bar_height = int(bar_height)  # Convert to int
             bar_color = fake_color if prediction >= 0.5 else real_color
@@ -49,8 +49,23 @@ class PredictionsBarGraph(QWidget):
             # Display model name and prediction value as labels
             label_text = f"{self.models_index[i]}: {prediction:.4f}"
             painter.setPen(text_color)
+            text_color = Qt.white
+            font = QFont()
+            font.setPointSize(12)  # Adjust font size as needed
+            painter.setFont(font)
+            painter.setPen(text_color)
+
+            # Calculate center coordinates of the widget
+            center_x = self.width() / 2
+
+            # Get the size of the text
+            text_rect = painter.fontMetrics().boundingRect(label_text)
+
+            # Draw the text, adjusting the coordinates to center it
             painter.drawText(
-                bar_x, bar_y - 5, bar_width, 20, Qt.AlignCenter, label_text
+                int(center_x - text_rect.width() / 2),
+                bar_y + 25,
+                label_text,
             )
 
     def draw_placeholder_text(self, painter):
