@@ -7,12 +7,13 @@ from PIL import Image
 from dataset.transform import xception_default_data_transforms
 from network.models import model_selection
 
+print("Cuda available: ", torch.cuda.is_available())
 device = torch.device("cuda" if torch.cuda.is_available() else "mps")
 
 model_names = [
     "faceswap",
     "deepfake",
-    "neuraltextures",
+    "Neuraltextures",
     "face2face",
     "faceshifter",
 ]
@@ -23,7 +24,7 @@ def load_models():
     for model_name in model_names:
         model, *_ = model_selection(modelname="xception", num_out_classes=2)
         print(f"Loading {model_name} Model")
-        checkpoint = torch.load(f"./trained_models/{model_name}.pt")
+        checkpoint = torch.load(f"./trained_models/{model_name}.pt", map_location="cpu")
         model.load_state_dict(checkpoint["model_state_dict"])
         model = model.to(device)
         model.eval()

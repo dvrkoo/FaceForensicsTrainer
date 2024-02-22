@@ -16,10 +16,9 @@ from PyQt5.QtWidgets import (
     QWidget,
     QComboBox,
 )
+from playerModules import model_functions, prediction_bar
 
-from playerModules import model_functions
-
-from playerModules.progressbar import ProgressBarWithTimeLabel
+from playerModules.progress_bar import ProgressBarWithTimeLabel
 from playerModules.timer import VideoTimer
 
 models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
@@ -47,6 +46,8 @@ class VideoPlayerApp(QWidget):
         self.playing = False
 
         self.is_fake = False
+
+        # setup prediction bar
 
     def model_selection_changed(self, index):
         # Slot to be triggered when the selected model changes
@@ -93,6 +94,10 @@ class VideoPlayerApp(QWidget):
         # Set the bottom layout for the main layout
         layout.addLayout(bottom_layout)
 
+        # add prediction bar
+        self.prediction_bar = prediction_bar.PredictionsBarGraph(self)
+        layout.addWidget(self.prediction_bar)
+
     def load_video(self):
         # Open a file dialog to choose a video file
         file_dialog = QFileDialog()
@@ -134,6 +139,9 @@ class VideoPlayerApp(QWidget):
             self.play_button.setText("Play")
             self.load_button.show()
             self.timer.stop()
+
+    def update_predictions(self, predictions):
+        self.prediction_bar.set_predictions(predictions, models_index)
 
     def setup_predictions_text(self, predictions):
         if self.selected_model is None:
@@ -179,6 +187,7 @@ class VideoPlayerApp(QWidget):
                         input_tensor, self.models, selected_model=self.selected_model
                     )
 
+                    self.update_predictions(predictions)
                     self.setup_predictions_text(predictions)
                     self.update_label(face_1, fake, index, frame)
                 # Resize the frame to the fixed size
@@ -236,7 +245,7 @@ class VideoPlayerApp(QWidget):
             frame,
             (max(0, x), max(0, y)),
             (min(frame.shape[1], x + width), min(frame.shape[0], y + height)),
-            (0, 255, 0),
+            label_color,
             2,
         )
 

@@ -1,7 +1,7 @@
-import argparse
 import os
 from datetime import datetime
 
+import argparse
 import torch
 import torch.multiprocessing
 import torch.nn as nn
@@ -14,7 +14,11 @@ from tqdm import tqdm
 from dataset.transform import CustomImageDataset
 from network.models import model_selection
 
-torch.mps.empty_cache()
+if torch.cuda.is_available():
+    torch.cuda.empty_cache()
+else:
+    torch.mps.empty_cache()
+
 torch.multiprocessing.set_sharing_strategy("file_system")
 BATCH_SIZE = 32
 transform = transforms.Compose(
