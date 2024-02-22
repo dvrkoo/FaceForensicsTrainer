@@ -32,15 +32,15 @@ class VideoPlayerApp(QWidget):
         self.setup_ui()
         self.models, self.detector = model_functions.load_models()
         self.selected_model = None
-
+        self.resizing = False
         # Initialize video capture to None
         self.cap = None
         self.timer = VideoTimer(self)
         self.timer.timeout_signal.connect(self.timerEvent)
 
         # Set default video dimensions
-        self.video_width = 800
-        self.video_height = 600
+        self.video_width = 600
+        self.video_height = 500
 
         # setup video playing state
         self.playing = False
@@ -61,6 +61,7 @@ class VideoPlayerApp(QWidget):
         # Add model selection
         self.model_combo_box = QComboBox(self)
         self.model_combo_box.addItems(["All Models"] + models_index)
+        self.model_combo_box.setStyleSheet("QComboBox { color: white; }")
         self.model_combo_box.currentIndexChanged.connect(self.model_selection_changed)
         layout.addWidget(self.model_combo_box)
 
@@ -71,6 +72,7 @@ class VideoPlayerApp(QWidget):
 
         # Create a label for video display
         self.video_label = QLabel(self)
+        self.video_label.setScaledContents(True)
         layout.addWidget(self.video_label)
 
         # Add play and pause buttons
@@ -109,7 +111,12 @@ class VideoPlayerApp(QWidget):
             # If a file is selected, initialize video capture
             self.cap = cv2.VideoCapture(file_path)
 
-            # set the default state to playing
+            # Get video dimensions
+            width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+            # Calculate aspect ratio
+            self.video_aspect_ratio = width / height  # set the default state to playing
             self.playing = True
 
             # show the play button
@@ -253,7 +260,7 @@ class VideoPlayerApp(QWidget):
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-
+    QApplication.setStyle("Fusion")
     app = QApplication(sys.argv)
     window = VideoPlayerApp()
     window.show()

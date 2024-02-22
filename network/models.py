@@ -6,8 +6,23 @@ Author: Andreas Rössler
 import torch
 import torch.nn as nn
 import torchvision
+import os
+import sys
 
 from network.xception import xception
+
+
+def get_resource_path(relative_path):
+    """Returns the absolute path to a resource, works for development and PyInstaller bundles."""
+    if getattr(sys, "frozen", False):  # Check if bundled by PyInstaller
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")  # Current directory if not bundled
+    return os.path.join(base_path, relative_path)
+
+
+# Use the function to load your model:
+network_model_path = get_resource_path("network/xception-b5690688.pth")
 
 
 def return_pytorch04_xception(pretrained=True):
@@ -17,7 +32,7 @@ def return_pytorch04_xception(pretrained=True):
         # Load model in torch 0.4+
         model.fc = model.last_linear
         del model.last_linear
-        state_dict = torch.load("./network/xception-b5690688.pth")
+        state_dict = torch.load(network_model_path)
         for name, weights in state_dict.items():
             if "pointwise" in name:
                 state_dict[name] = weights.unsqueeze(-1).unsqueeze(-1)
