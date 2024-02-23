@@ -9,6 +9,7 @@ class PredictionsBarGraph(QWidget):
         self.predictions = []
         self.models_index = []
         self.placeholder_text = "No predictions"
+        self.setMinimumSize(800, 200)
 
     def set_predictions(self, predictions, models_index):
         self.predictions = predictions
@@ -33,9 +34,8 @@ class PredictionsBarGraph(QWidget):
         font = QFont()
         font.setPointSize(10)
         painter.setFont(font)
-
         bar_height = self.height() / len(self.predictions)
-        max_prediction = max(self.predictions)
+        max_prediction = 1
 
         for i, prediction in enumerate(self.predictions):
             bar_width = prediction / max_prediction * self.width()

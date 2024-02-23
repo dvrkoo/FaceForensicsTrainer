@@ -2,10 +2,22 @@ import cv2
 import dlib
 import torch
 import torch.nn as nn
+import os
+import sys
 from PIL import Image
 
 from dataset.transform import xception_default_data_transforms
 from network.models import model_selection
+
+
+def get_resource_path(relative_path):
+    """Returns the absolute path to a resource, works for development and PyInstaller bundles."""
+    if getattr(sys, "frozen", False):  # Check if bundled by PyInstaller
+        base_path = sys._MEIPASS
+    else:
+        base_path = os.path.abspath(".")  # Current directory if not bundled
+    return os.path.join(base_path, relative_path)
+
 
 print("Cuda available: ", torch.cuda.is_available())
 device = torch.device("cuda" if torch.cuda.is_available() else "mps")
@@ -24,7 +36,9 @@ def load_models():
     for model_name in model_names:
         model, *_ = model_selection(modelname="xception", num_out_classes=2)
         print(f"Loading {model_name} Model")
-        checkpoint = torch.load(f"./trained_models/{model_name}.pt", map_location="cpu")
+        checkpoint = torch.load(
+            get_resource_path(f"./trained_models/{model_name}.pt"), map_location="cpu"
+        )
         model.load_state_dict(checkpoint["model_state_dict"])
         model = model.to(device)
         model.eval()
