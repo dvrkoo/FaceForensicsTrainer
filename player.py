@@ -6,6 +6,7 @@ from PyQt5.QtGui import (
     QImage,
     QPixmap,
 )
+from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication,
     QFileDialog,
@@ -15,6 +16,8 @@ from PyQt5.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QComboBox,
+    QSizePolicy,
+    QScrollArea,
 )
 from playerModules import model_functions, prediction_bar
 
@@ -40,7 +43,7 @@ class VideoPlayerApp(QWidget):
 
         # Set default video dimensions
         self.video_width = 600
-        self.video_height = 500
+        self.video_height = 800
 
         # setup video playing state
         self.playing = False
@@ -65,21 +68,21 @@ class VideoPlayerApp(QWidget):
         self.model_combo_box.currentIndexChanged.connect(self.model_selection_changed)
         layout.addWidget(self.model_combo_box)
 
-        # Add a button to open a file dialog
-        self.load_button = QPushButton("Load Video", self)
-        self.load_button.clicked.connect(self.load_video)
-        layout.addWidget(self.load_button)
-
         # Create a label for video display
         self.video_label = QLabel(self)
-        self.video_label.setScaledContents(True)
+        # self.video_label.setScaledContents(True)
+        self.video_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         layout.addWidget(self.video_label)
-
         # Add play and pause buttons
         self.play_button = QPushButton("Pause", self)
         self.play_button.clicked.connect(self.play_pause_video)
         self.play_button.hide()
         layout.addWidget(self.play_button)
+
+        # Add a button to open a file dialog
+        self.load_button = QPushButton("Load Video", self)
+        self.load_button.clicked.connect(self.load_video)
+        layout.addWidget(self.load_button)
 
         # Progress bar
         self.progress_widget = ProgressBarWithTimeLabel(self)
@@ -98,7 +101,14 @@ class VideoPlayerApp(QWidget):
 
         # add prediction bar
         self.prediction_bar = prediction_bar.PredictionsBarGraph(self)
-        layout.addWidget(self.prediction_bar)
+        # Create a QScrollArea
+        scroll_area = QScrollArea(self)
+        scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
+        scroll_area.setWidget(self.prediction_bar)
+        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
+        # Add the scroll area to your layout
+        layout.addWidget(scroll_area)
+        # layout.addWidget(self.prediction_bar)
 
     def load_video(self):
         # Open a file dialog to choose a video file
@@ -112,11 +122,10 @@ class VideoPlayerApp(QWidget):
             self.cap = cv2.VideoCapture(file_path)
 
             # Get video dimensions
-            width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            # self.video_label.setFixedSize(self.video_width, self.video_height)
 
-            # Calculate aspect ratio
-            self.video_aspect_ratio = width / height  # set the default state to playing
             self.playing = True
 
             # show the play button
@@ -147,8 +156,8 @@ class VideoPlayerApp(QWidget):
             self.load_button.show()
             self.timer.stop()
 
-    def update_predictions(self, predictions):
-        self.prediction_bar.set_predictions(predictions, models_index)
+    def update_predictions(self, predictions, selected_model):
+        self.prediction_bar.set_predictions(predictions, models_index, selected_model)
 
     # TODO delete this function
     def setup_predictions_text(self, predictions):
@@ -195,18 +204,26 @@ class VideoPlayerApp(QWidget):
                         input_tensor, self.models, selected_model=self.selected_model
                     )
 
-                    self.update_predictions(predictions)
+                    self.update_predictions(predictions, self.selected_model)
                     # self.setup_predictions_text(predictions)
                     self.update_label(face_1, fake, index, frame)
-                # Resize the frame to the fixed size
-                frame_resized = cv2.resize(frame, (self.video_width, self.video_height))
+                # Calculate scaling factors
+                height_scale = self.video_label.height() / frame.shape[0]
+                width_scale = self.video_label.width() / frame.shape[1]
+                scale = min(height_scale, width_scale)
+
+                # Resize the frame to fit the window
+                frame_resized = cv2.resize(frame, None, fx=scale, fy=scale)
 
                 # Convert the OpenCV image to a QImage
                 q_img = self.opencv_to_qimage(frame_resized)
                 # Display the QImage in the QLabel
                 pixmap = QPixmap.fromImage(q_img)
                 self.video_label.setPixmap(pixmap)
-                self.video_label.setScaledContents(True)
+                self.video_label.setAlignment(Qt.AlignCenter)
+
+                # Resize the window to fit the scaled-down video
+                # self.resize(pixmap.width(), pixmap.height())
 
                 # Update the progress bar based on the current time
                 current_time = self.cap.get(cv2.CAP_PROP_POS_MSEC)

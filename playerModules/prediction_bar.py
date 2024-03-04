@@ -11,9 +11,10 @@ class PredictionsBarGraph(QWidget):
         self.placeholder_text = "No predictions"
         self.setMinimumSize(800, 200)
 
-    def set_predictions(self, predictions, models_index):
+    def set_predictions(self, predictions, models_index, selected_model):
         self.predictions = predictions
         self.models_index = models_index
+        self.selected_model = selected_model
         self.update()
 
     def paintEvent(self, event):
@@ -36,7 +37,6 @@ class PredictionsBarGraph(QWidget):
         painter.setFont(font)
         bar_height = self.height() / len(self.predictions)
         max_prediction = 1
-
         for i, prediction in enumerate(self.predictions):
             bar_width = prediction / max_prediction * self.width()
             bar_x = 0  # Convert to int
@@ -47,7 +47,10 @@ class PredictionsBarGraph(QWidget):
             painter.fillRect(bar_x, bar_y, bar_width, bar_height, bar_color)
 
             # Display model name and prediction value as labels
-            label_text = f"{self.models_index[i]}: {prediction:.4f}"
+            if self.selected_model:
+                label_text = f"{self.selected_model}: {prediction:.4f}"
+            else:
+                label_text = f"{self.models_index[i]}: {prediction:.4f}"
             painter.setPen(text_color)
             text_color = Qt.white
             font = QFont()

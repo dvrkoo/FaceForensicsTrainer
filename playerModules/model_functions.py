@@ -25,7 +25,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "mps")
 model_names = [
     "faceswap",
     "deepfake",
-    "Neuraltextures",
+    "neuraltextures",
     "face2face",
     "faceshifter",
 ]
@@ -106,7 +106,7 @@ def predict_with_selected_model(input_tensor, model, post_fuction=nn.Softmax(dim
 def predict_with_model(
     input_tensor, models, selected_model=None, post_function=nn.Softmax(dim=1)
 ):
-    if selected_model is not None and selected_model in model_names:
+    if selected_model in model_names:
         best_class = 0
         # If a specific model is selected, only predict with that model
         model_index = model_names.index(selected_model)
