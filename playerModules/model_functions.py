@@ -80,7 +80,6 @@ def get_boundingbox(face, frame, scale=1.3):
 def detect_faces(frame, detector):
     # Convert the BGR image to RGB explicitly
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
     # Detect faces in the frame using dlib
     return detector(gray, 1)
 
@@ -95,11 +94,8 @@ def preprocess_input(face_roi):
 
 
 def predict_with_selected_model(input_tensor, model, post_fuction=nn.Softmax(dim=1)):
-    best_class = 0
     with torch.no_grad():
         output = post_fuction(model(input_tensor))
-    if torch.argmax(output, dim=1):
-        best_class = 1
     return output[0][1].item()
 
 
@@ -107,43 +103,10 @@ def predict_with_model(
     input_tensor, models, selected_model=None, post_function=nn.Softmax(dim=1)
 ):
     if selected_model in model_names:
-        best_class = 0
         # If a specific model is selected, only predict with that model
         model_index = model_names.index(selected_model)
         with torch.no_grad():
             output = post_function(models[model_index](input_tensor))
-        if torch.argmax(output, dim=1):
-            best_class = 1
-        return output, model_index, best_class, [output[0][1].item()]
-    # Use your trained model to predict whether the face is fake or genuine
-    outputs = []
-    predictions = []
-    with torch.no_grad():
-        for model in range(len(models)):
-            outputs.append(post_function(models[model](input_tensor)))
-
-    best_prediction = None
-    best_index = None
-    best_class = None
-    count = 0
-    for index, probabilities in enumerate(outputs):
-        # Assuming probabilities is a tensor or list of probabilities for each class
-        predictions.append(probabilities[0][1].item())
-        if torch.argmax(probabilities, dim=1):
-            count += 1
-
-    if count >= 1:
-        best_class = 1
+        return [output[0][1].item()]
     else:
-        best_class = 0
-
-    if best_class:
-        stacked_tensors = torch.stack([tensor[0, 1] for tensor in outputs])
-
-        # Extract the second element from each tensor and find the maximum
-        best_prediction, best_index = torch.max(stacked_tensors, dim=0)
-        best_index = best_index.item()
-        print(best_index)
-
-    # return predictions
-    return best_prediction, best_index, best_class, predictions
+        return [0]

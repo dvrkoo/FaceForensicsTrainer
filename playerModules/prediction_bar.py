@@ -1,4 +1,4 @@
-from PyQt5.QtWidgets import QWidget, QVBoxLayout, QLabel
+from PyQt5.QtWidgets import QWidget
 from PyQt5.QtGui import QPainter, QColor, QFont
 from PyQt5.QtCore import Qt
 
@@ -22,15 +22,16 @@ class PredictionsBarGraph(QWidget):
         self.setMinimumWidth(total_width)
 
     def set_predictions(self, predic, models_indexes, selected_models):
-        self.predictions = predic
-        predic = [[0] for i in range(5)]
+        predictions = predic[:]
+        # self.predictions = predic
+        self.predictions = [[0] for i in range(5)]
         self.models_index = models_indexes
         self.selected_models = selected_models
         for selected_model in self.selected_models:
             for i in range(5):
                 if i == self.models_index.index(selected_model):
-                    predic[i] = self.predictions.pop(0)
-        self.predictions = predic
+                    self.predictions[i] = predictions.pop(0)
+        # self.predictions = predic
         for i in range(5):
             self.past_predictions[i].append(self.predictions[i][0])
         self.update()
@@ -39,21 +40,17 @@ class PredictionsBarGraph(QWidget):
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
-
         # Check if predictions are available
         if not self.predictions or not self.models_index:
             self.draw_placeholder_text(painter)
             return
-
         # Define colors for the bars and labels
         text_color = Qt.black
-
         # Define font for labels
         font = QFont()
         font.setPointSize(10)
         painter.setFont(font)
         bar_width = self.width() / len(self.predictions)
-
         num_rows = (
             len(self.predictions) + self.total_spaces - 1
         ) // self.total_spaces  # Number of columns needed
@@ -68,7 +65,6 @@ class PredictionsBarGraph(QWidget):
                 bar_height = -(self.past_predictions[i][j] * 60)
                 bar_width = int(bar_width)  # Convert to int
                 bar_height = int(bar_height)  # Convert to int
-
                 painter.fillRect(
                     bar_x,
                     bar_y,
@@ -95,12 +91,10 @@ class PredictionsBarGraph(QWidget):
 
     def draw_placeholder_text(self, painter):
         text_color = Qt.black
-
         # Define font for placeholder text
         font = QFont()
         font.setPointSize(12)
         painter.setFont(font)
-
         # Draw placeholder text in the center of the widget
         painter.setPen(text_color)
         painter.drawText(self.rect(), Qt.AlignCenter, self.placeholder_text)

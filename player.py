@@ -15,10 +15,8 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QVBoxLayout,
     QWidget,
-    QComboBox,
     QSizePolicy,
     QScrollArea,
-    QCheckBox,
 )
 
 
@@ -33,7 +31,6 @@ models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshif
 class VideoPlayerApp(QWidget):
     def __init__(self):
         super().__init__()
-
         # Set up UI
         self.setup_ui()
         self.models, self.detector = model_functions.load_models()
@@ -43,17 +40,12 @@ class VideoPlayerApp(QWidget):
         self.cap = None
         self.timer = VideoTimer(self)
         self.timer.timeout_signal.connect(self.timerEvent)
-
         # Set default video dimensions
         self.video_width = 600
         self.video_height = 800
-
         # setup video playing state
         self.playing = False
-
         self.is_fake = False
-
-        # setup prediction bar
 
     def model_selection_changed(self, index):
         # Slot to be triggered when the selected model changes
@@ -66,7 +58,6 @@ class VideoPlayerApp(QWidget):
         self.model_dropdown = CheckableComboBox()
         self.model_dropdown.addItems(models_index)
         layout.addWidget(self.model_dropdown)
-        selected_models = self.model_dropdown.returnSelectedItems()
         self.video_label = QLabel(self)
         # self.video_label.setScaledContents(True)
         self.video_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -76,27 +67,19 @@ class VideoPlayerApp(QWidget):
         self.play_button.clicked.connect(self.play_pause_video)
         self.play_button.hide()
         layout.addWidget(self.play_button)
-
         # Add a button to open a file dialog
         self.load_button = QPushButton("Load Video", self)
         self.load_button.clicked.connect(self.load_video)
         layout.addWidget(self.load_button)
-
         # Progress bar
         self.progress_widget = ProgressBarWithTimeLabel(self)
         layout.addWidget(self.progress_widget)
         # Add predictions label
         self.predictions_label = QLabel(self)
         layout.addWidget(self.predictions_label)
-
         # Add bottom layout
         bottom_layout = QHBoxLayout()
-
-        # Add additional widgets to the bottom layout if needed
-
-        # Set the bottom layout for the main layout
         layout.addLayout(bottom_layout)
-
         # add prediction bar
         self.prediction_bar = prediction_bar.PredictionsBarGraph(self)
         # Create a QScrollArea
@@ -106,7 +89,6 @@ class VideoPlayerApp(QWidget):
         scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
         # Add the scroll area to your layout
         layout.addWidget(scroll_area)
-        # layout.addWidget(self.prediction_bar)
 
     def load_video(self):
         # Open a file dialog to choose a video file
@@ -119,17 +101,13 @@ class VideoPlayerApp(QWidget):
             # If a file is selected, initialize video capture
             self.cap = cv2.VideoCapture(file_path)
             self.prediction_bar.past_predictions = [[] for _ in range(5)]
-
             # Get video dimensions
             self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             # self.video_label.setFixedSize(self.video_width, self.video_height)
-
             self.playing = True
-
             # show the play button
             self.play_button.show()
-
             # Check if the timer has been initialized before checking isActive
             if hasattr(self, "timer"):
                 self.timer.start(33)  # ~30 fps
@@ -195,44 +173,31 @@ class VideoPlayerApp(QWidget):
 
                     # Preprocess the face image for model input
                     input_tensor = model_functions.preprocess_input(face_roi)
-                    indexes, fakes, predictions = ([] for _ in range(3))
+                    predictions = []
                     for selected_model in self.selected_models:
                         # use model
-                        (
-                            prediction_value,
-                            index,
-                            fake,
-                            prediction,
-                        ) = model_functions.predict_with_model(
+                        prediction = model_functions.predict_with_model(
                             input_tensor,
                             self.models,
                             selected_model=selected_model,
                         )
-                        indexes.append(index)
-                        fakes.append(fake)
                         predictions.append(prediction)
 
                     self.update_predictions(predictions, self.selected_models)
                     # self.setup_predictions_text(predictions)
-                    self.update_label(face_1, max(fakes), index, frame)
+                    self.update_label(face_1, predictions, frame)
                 # Calculate scaling factors
                 height_scale = self.video_label.height() / frame.shape[0]
                 width_scale = self.video_label.width() / frame.shape[1]
                 scale = min(height_scale, width_scale)
-
                 # Resize the frame to fit the window
                 frame_resized = cv2.resize(frame, None, fx=scale, fy=scale)
-
                 # Convert the OpenCV image to a QImage
                 q_img = self.opencv_to_qimage(frame_resized)
                 # Display the QImage in the QLabel
                 pixmap = QPixmap.fromImage(q_img)
                 self.video_label.setPixmap(pixmap)
                 self.video_label.setAlignment(Qt.AlignCenter)
-
-                # Resize the window to fit the scaled-down video
-                # self.resize(pixmap.width(), pixmap.height())
-
                 # Update the progress bar based on the current time
                 current_time = self.cap.get(cv2.CAP_PROP_POS_MSEC)
                 self.progress_widget.progress_bar.setValue(int(current_time))
@@ -257,12 +222,19 @@ class VideoPlayerApp(QWidget):
         )
         return q_img
 
-    def update_label(self, face, fake, index, frame):
+    def update_label(self, face, predictions, frame):
+        predictions = [item for sublist in predictions for item in sublist]
+        if predictions == []:
+            predictions = [0, 0, 0, 0, 0]
         x, y, width, height = face.left(), face.top(), face.width(), face.height()
-
-        self.is_fake = fake
-        label = f"Faked with model: {models_index[index]}" if fake else "Genuine"
-        label_color = (255, 0, 0) if fake else (0, 255, 0)
+        max_index = predictions.index(max(predictions))
+        self.is_fake = 1 if max(predictions) > 0.5 else 0
+        label = (
+            f"Faked with model: {self.selected_models[max_index]}"
+            if self.is_fake
+            else "Genuine"
+        )
+        label_color = (255, 0, 0) if self.is_fake else (0, 255, 0)
 
         cv2.putText(
             frame,
