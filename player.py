@@ -18,9 +18,12 @@ from PyQt5.QtWidgets import (
     QComboBox,
     QSizePolicy,
     QScrollArea,
+    QCheckBox,
 )
-from playerModules import model_functions, prediction_bar
 
+
+from playerModules import model_functions, prediction_bar
+from playerModules.models_dropdown import CheckableComboBox
 from playerModules.progress_bar import ProgressBarWithTimeLabel
 from playerModules.timer import VideoTimer
 
@@ -60,15 +63,18 @@ class VideoPlayerApp(QWidget):
     def setup_ui(self):
         # Set up layout
         layout = QVBoxLayout(self)
-
+        self.model_dropdown = CheckableComboBox()
+        self.model_dropdown.addItems(models_index)
+        layout.addWidget(self.model_dropdown)
+        selected_models = self.model_dropdown.returnSelectedItems()
+        print(selected_models)
+        # Make items checkable
         # Add model selection
-        self.model_combo_box = QComboBox(self)
-        self.model_combo_box.addItems(["All Models"] + models_index)
-        self.model_combo_box.setStyleSheet("QComboBox { color: white; }")
-        self.model_combo_box.currentIndexChanged.connect(self.model_selection_changed)
-        layout.addWidget(self.model_combo_box)
-
-        # Create a label for video display
+        # self.model_combo_box = QComboBox(self)
+        # self.model_combo_box.addItems(["All Models"] + models_index)
+        # self.model_combo_box.setStyleSheet("QComboBox { color: white; }")
+        # self.model_combo_box.currentIndexChanged.connect(self.model_selection_changed)
+        # layout.addWidget(self.model_combo_box)
         self.video_label = QLabel(self)
         # self.video_label.setScaledContents(True)
         self.video_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -120,6 +126,7 @@ class VideoPlayerApp(QWidget):
         if file_path:
             # If a file is selected, initialize video capture
             self.cap = cv2.VideoCapture(file_path)
+            self.prediction_bar.past_predictions = [[] for _ in range(5)]
 
             # Get video dimensions
             self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))

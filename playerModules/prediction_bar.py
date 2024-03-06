@@ -9,13 +9,32 @@ class PredictionsBarGraph(QWidget):
         self.predictions = []
         self.models_index = []
         self.placeholder_text = "No predictions"
-        self.setMinimumSize(800, 200)
+        self.setMinimumSize(800, 900)
+        self.total_spaces = 5
+        self.spacing = 60
+        self.space_height = (
+            self.height() - (self.total_spaces - 1) * self.spacing
+        ) / self.total_spaces
+        self.past_predictions = [[] for _ in range(5)]
+
+    def update_width(self):
+        total_width = len(self.past_predictions[0]) * (10)
+        self.setMinimumWidth(total_width)
 
     def set_predictions(self, predictions, models_index, selected_model):
         self.predictions = predictions
+        predictions = [0, 0, 0, 0, 0]
         self.models_index = models_index
         self.selected_model = selected_model
+        if self.selected_model:
+            for i in range(5):
+                if i == self.models_index.index(self.selected_model):
+                    predictions[i] = self.predictions[0]
+            self.predictions = predictions
+        for i in range(5):
+            self.past_predictions[i].append(self.predictions[i])
         self.update()
+        self.update_width()
 
     def paintEvent(self, event):
         painter = QPainter(self)
@@ -27,49 +46,52 @@ class PredictionsBarGraph(QWidget):
             return
 
         # Define colors for the bars and labels
-        fake_color = QColor(255, 0, 0)
-        real_color = QColor(0, 255, 0)
         text_color = Qt.black
 
         # Define font for labels
         font = QFont()
         font.setPointSize(10)
         painter.setFont(font)
-        bar_height = self.height() / len(self.predictions)
-        max_prediction = 1
+        bar_width = self.width() / len(self.predictions)
+
+        num_rows = (
+            len(self.predictions) + self.total_spaces - 1
+        ) // self.total_spaces  # Number of columns needed
         for i, prediction in enumerate(self.predictions):
-            bar_width = prediction / max_prediction * self.width()
-            bar_x = 0  # Convert to int
-            bar_y = int(bar_height * i)  # Convert to int
-            bar_width = int(bar_width)  # Convert to int
-            bar_height = int(bar_height)  # Convert to int
-            bar_color = fake_color if prediction >= 0.5 else real_color
-            painter.fillRect(bar_x, bar_y, bar_width, bar_height, bar_color)
+            row = i // num_rows  # Row index for the current prediction
+            for j in range(len(self.past_predictions[i])):
+                bar_x = int(j * (bar_width + 3) + 5)
+                bar_y = int(
+                    70 + (row * self.space_height) // num_rows + row * self.spacing
+                )
+                bar_width = 3
+                bar_height = -(self.past_predictions[i][j] * 60)
+                bar_width = int(bar_width)  # Convert to int
+                bar_height = int(bar_height)  # Convert to int
 
-            # Display model name and prediction value as labels
-            if self.selected_model:
-                label_text = f"{self.selected_model}: {prediction:.4f}"
-            else:
+                painter.fillRect(
+                    bar_x,
+                    bar_y,
+                    bar_width,
+                    bar_height,
+                    QColor(255, 0, 0)
+                    if self.past_predictions[i][j] >= 0.5
+                    else QColor(0, 255, 0),
+                )
+                # Display model name and prediction value as labels
                 label_text = f"{self.models_index[i]}: {prediction:.4f}"
-            painter.setPen(text_color)
-            text_color = Qt.white
-            font = QFont()
-            font.setPointSize(12)  # Adjust font size as needed
-            painter.setFont(font)
-            painter.setPen(text_color)
-
-            # Calculate center coordinates of the widget
-            center_x = self.width() / 2
-
-            # Get the size of the text
-            text_rect = painter.fontMetrics().boundingRect(label_text)
-
-            # Draw the text, adjusting the coordinates to center it
-            painter.drawText(
-                int(center_x - text_rect.width() / 2),
-                bar_y + 25,
-                label_text,
-            )
+                painter.setPen(text_color)
+                text_color = Qt.white
+                font = QFont()
+                font.setPointSize(12)  # Adjust font size as needed
+                painter.setFont(font)
+                painter.setPen(text_color)
+                # Draw the text, adjusting the coordinates to center it
+                painter.drawText(
+                    0,
+                    bar_y + 25,
+                    label_text,
+                )
 
     def draw_placeholder_text(self, painter):
         text_color = Qt.black
