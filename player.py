@@ -37,7 +37,7 @@ class VideoPlayerApp(QWidget):
         # Set up UI
         self.setup_ui()
         self.models, self.detector = model_functions.load_models()
-        self.selected_model = None
+        self.selected_models = None
         self.resizing = False
         # Initialize video capture to None
         self.cap = None
@@ -67,14 +67,6 @@ class VideoPlayerApp(QWidget):
         self.model_dropdown.addItems(models_index)
         layout.addWidget(self.model_dropdown)
         selected_models = self.model_dropdown.returnSelectedItems()
-        print(selected_models)
-        # Make items checkable
-        # Add model selection
-        # self.model_combo_box = QComboBox(self)
-        # self.model_combo_box.addItems(["All Models"] + models_index)
-        # self.model_combo_box.setStyleSheet("QComboBox { color: white; }")
-        # self.model_combo_box.currentIndexChanged.connect(self.model_selection_changed)
-        # layout.addWidget(self.model_combo_box)
         self.video_label = QLabel(self)
         # self.video_label.setScaledContents(True)
         self.video_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -164,7 +156,9 @@ class VideoPlayerApp(QWidget):
             self.timer.stop()
 
     def update_predictions(self, predictions, selected_model):
-        self.prediction_bar.set_predictions(predictions, models_index, selected_model)
+        self.prediction_bar.set_predictions(
+            predictions, models_index, self.selected_models
+        )
 
     # TODO delete this function
     def setup_predictions_text(self, predictions):
@@ -184,6 +178,7 @@ class VideoPlayerApp(QWidget):
             )
 
     def timerEvent(self):
+        self.selected_models = self.model_dropdown.returnSelectedItems()
         # Read a frame from the video
         if self.playing:
             ret, frame = self.cap.read()
@@ -200,20 +195,26 @@ class VideoPlayerApp(QWidget):
 
                     # Preprocess the face image for model input
                     input_tensor = model_functions.preprocess_input(face_roi)
+                    indexes, fakes, predictions = ([] for _ in range(3))
+                    for selected_model in self.selected_models:
+                        # use model
+                        (
+                            prediction_value,
+                            index,
+                            fake,
+                            prediction,
+                        ) = model_functions.predict_with_model(
+                            input_tensor,
+                            self.models,
+                            selected_model=selected_model,
+                        )
+                        indexes.append(index)
+                        fakes.append(fake)
+                        predictions.append(prediction)
 
-                    # use model
-                    (
-                        prediction_value,
-                        index,
-                        fake,
-                        predictions,
-                    ) = model_functions.predict_with_model(
-                        input_tensor, self.models, selected_model=self.selected_model
-                    )
-
-                    self.update_predictions(predictions, self.selected_model)
+                    self.update_predictions(predictions, self.selected_models)
                     # self.setup_predictions_text(predictions)
-                    self.update_label(face_1, fake, index, frame)
+                    self.update_label(face_1, max(fakes), index, frame)
                 # Calculate scaling factors
                 height_scale = self.video_label.height() / frame.shape[0]
                 width_scale = self.video_label.width() / frame.shape[1]

@@ -143,6 +143,7 @@ def predict_with_model(
         # Extract the second element from each tensor and find the maximum
         best_prediction, best_index = torch.max(stacked_tensors, dim=0)
         best_index = best_index.item()
+        print(best_index)
 
     # return predictions
     return best_prediction, best_index, best_class, predictions

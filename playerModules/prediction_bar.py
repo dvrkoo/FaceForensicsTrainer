@@ -21,18 +21,18 @@ class PredictionsBarGraph(QWidget):
         total_width = len(self.past_predictions[0]) * (10)
         self.setMinimumWidth(total_width)
 
-    def set_predictions(self, predictions, models_index, selected_model):
-        self.predictions = predictions
-        predictions = [0, 0, 0, 0, 0]
-        self.models_index = models_index
-        self.selected_model = selected_model
-        if self.selected_model:
+    def set_predictions(self, predic, models_indexes, selected_models):
+        self.predictions = predic
+        predic = [[0] for i in range(5)]
+        self.models_index = models_indexes
+        self.selected_models = selected_models
+        for selected_model in self.selected_models:
             for i in range(5):
-                if i == self.models_index.index(self.selected_model):
-                    predictions[i] = self.predictions[0]
-            self.predictions = predictions
+                if i == self.models_index.index(selected_model):
+                    predic[i] = self.predictions.pop(0)
+        self.predictions = predic
         for i in range(5):
-            self.past_predictions[i].append(self.predictions[i])
+            self.past_predictions[i].append(self.predictions[i][0])
         self.update()
         self.update_width()
 
@@ -79,7 +79,7 @@ class PredictionsBarGraph(QWidget):
                     else QColor(0, 255, 0),
                 )
                 # Display model name and prediction value as labels
-                label_text = f"{self.models_index[i]}: {prediction:.4f}"
+                label_text = f"{self.models_index[i]}: {prediction[0]:.4f}"
                 painter.setPen(text_color)
                 text_color = Qt.white
                 font = QFont()
