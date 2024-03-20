@@ -18,7 +18,6 @@ if torch.cuda.is_available():
     torch.cuda.empty_cache()
 else:
     torch.mps.empty_cache()
-
 torch.multiprocessing.set_sharing_strategy("file_system")
 BATCH_SIZE = 32
 transform = transforms.Compose(
@@ -28,7 +27,6 @@ transform = transforms.Compose(
         transforms.Normalize([0.5] * 3, [0.5] * 3),
     ]
 )
-
 # Define dataset paths
 
 

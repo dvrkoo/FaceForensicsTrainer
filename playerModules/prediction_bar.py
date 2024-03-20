@@ -9,12 +9,11 @@ class PredictionsBarGraph(QWidget):
         self.predictions = []
         self.models_index = []
         self.placeholder_text = "No predictions"
-        self.setMinimumSize(800, 900)
+        # self.setMinimumSize(600, 500)
         self.total_spaces = 5
-        self.spacing = 60
-        self.space_height = (
-            self.height() - (self.total_spaces - 1) * self.spacing
-        ) / self.total_spaces
+        self.spacing = 10
+        print(self.height())
+        self.space_height = self.update_space_height()
         self.past_predictions = [[] for _ in range(5)]
 
     def update_width(self):
@@ -37,15 +36,20 @@ class PredictionsBarGraph(QWidget):
         self.update()
         self.update_width()
 
+    def update_space_height(self):
+        self.space_height = (self.height() - (self.total_spaces - 1) * self.spacing) / (
+            self.total_spaces + 1
+        )
+
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
+
         # Check if predictions are available
         if not self.predictions or not self.models_index:
             self.draw_placeholder_text(painter)
             return
         # Define colors for the bars and labels
-        text_color = Qt.black
         # Define font for labels
         font = QFont()
         font.setPointSize(10)
@@ -62,7 +66,7 @@ class PredictionsBarGraph(QWidget):
                     70 + (row * self.space_height) // num_rows + row * self.spacing
                 )
                 bar_width = 3
-                bar_height = -(self.past_predictions[i][j] * 60)
+                bar_height = -(self.past_predictions[i][j] * self.space_height * 0.5)
                 bar_width = int(bar_width)  # Convert to int
                 bar_height = int(bar_height)  # Convert to int
                 painter.fillRect(
@@ -74,20 +78,38 @@ class PredictionsBarGraph(QWidget):
                     if self.past_predictions[i][j] >= 0.5
                     else QColor(0, 255, 0),
                 )
-                # Display model name and prediction value as labels
-                label_text = f"{self.models_index[i]}: {prediction[0]:.4f}"
-                painter.setPen(text_color)
-                text_color = Qt.white
-                font = QFont()
-                font.setPointSize(12)  # Adjust font size as needed
-                painter.setFont(font)
-                painter.setPen(text_color)
-                # Draw the text, adjusting the coordinates to center it
-                painter.drawText(
-                    0,
-                    bar_y + 25,
-                    label_text,
+            #     # Display model name and prediction value as labels
+            # label_text = f"{self.models_index[i]}: {prediction[0]:.4f}"
+            # painter.setPen(text_color)
+            # text_color = Qt.white
+            # font = QFont()
+            # font.setPointSize(12)  # Adjust font size as needed
+            # painter.setFont(font)
+            # painter.setPen(text_color)
+            # # Draw the text, adjusting the coordinates to center it
+            # painter.drawText(
+            #     0,
+            #     bar_y + 25,
+            #     label_text,
+
+    def return_bar_y(self):
+        bars_y = []
+        num_rows = 5
+        tmp = 0
+        for row in range(5):
+            if self.space_height:
+                tmp = int(
+                    70 + (row * self.space_height) // num_rows + row * self.spacing
                 )
+            else:
+                tmp = 0
+            bars_y.append(tmp)
+        return bars_y
+
+    def resizeEvent(self, event):
+        # Update the space height whenever the widget is resized
+        self.update_space_height()
+        self.update()
 
     def draw_placeholder_text(self, painter):
         text_color = Qt.black
