@@ -85,7 +85,7 @@ class VideoPlayerApp(QWidget):
         # layout.addWidget(self.progress_widget)
         # Add predictions label
         # Add bottom layout
-        self.bottom_layout = QGridLayout()
+        self.bottom_layout = QHBoxLayout()
         layout.addLayout(self.bottom_layout, stretch=1)
         # self.prediction_bar = prediction_bar.PredictionsBarGraph(self)
         # self.bottom_layout.addWidget(self.prediction_bar, 0, 1, 5, 1)
@@ -95,41 +95,45 @@ class VideoPlayerApp(QWidget):
         # scroll_area.setWidget(self.prediction_bar)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
 
+        self.bottom_layout.addWidget(self.scroll_area)
         # Add the scroll area to your layout
         self.setup_predictions_text()
 
     def setup_predictions_text(self):
-        # bars_y = self.prediction_bar.return_bar_y()
-        bars_y = [0, 1, 2, 3, 4]
+        self.text_widget = QGridLayout()
         self.faceswap = QLabel("Faceswap : ")
-        self.faceswap.setGeometry(0, bars_y[0], 5, 5)
-        self.bottom_layout.addWidget(self.faceswap, 0, 0, 1, 1)
+        self.faceswap.setFixedWidth(150)
+        # self.faceswap.setGeometry(0, bars_y[0], 5, 5)
+        self.text_widget.addWidget(self.faceswap, 0, 0, 1, 1)
         self.deepfake = QLabel("Deepfake : ")
         # deepfake.setGeometry(0, bars_y[1], 5, 5)
-        self.bottom_layout.addWidget(self.deepfake, 1, 0, 1, 1)
+        self.text_widget.addWidget(self.deepfake, 1, 0, 1, 1)
         self.neuraltextures = QLabel("Neuraltextures : ")
         # neuraltextures.setGeometry(0, bars_y[2], 100, 100)
-        self.bottom_layout.addWidget(self.neuraltextures, 2, 0, 1, 1)
+        self.text_widget.addWidget(self.neuraltextures, 2, 0, 1, 1)
         self.face2face = QLabel("Face2Face : ")
         # face2face.setGeometry(0, bars_y[3], 100, 100)
-        self.bottom_layout.addWidget(self.face2face, 3, 0, 1, 1)
+        self.text_widget.addWidget(self.face2face, 3, 0, 1, 1)
         self.faceshift = QLabel("Faceshifter : ")
         # faceshift.setGeometry(0, bars_y[4], 100, 100)
-        self.bottom_layout.addWidget(self.faceshift, 4, 0, 1, 1)
+        self.text_widget.addWidget(self.faceshift, 4, 0, 1, 1)
+        self.bottom_layout.addLayout(self.text_widget)
         self.setup_predictions_bars()
 
     def setup_predictions_bars(self):
+        self.predictions_widget = QWidget()
+        self.predictions_layout = QGridLayout(self.predictions_widget)
         self.faceswap_bar = prediction_bar.PredictionsBarGraph(self)
-        self.bottom_layout.addWidget(self.faceswap_bar, 0, 1, 1, 1)
+        self.predictions_layout.addWidget(self.faceswap_bar, 0, 1, 1, 1)
         self.deepfake_bar = prediction_bar.PredictionsBarGraph(self)
-        self.bottom_layout.addWidget(self.deepfake_bar, 1, 1, 1, 1)
+        self.predictions_layout.addWidget(self.deepfake_bar, 1, 1, 1, 1)
         self.neuraltextures_bar = prediction_bar.PredictionsBarGraph(self)
-        self.bottom_layout.addWidget(self.neuraltextures_bar, 2, 1, 1, 1)
+        self.predictions_layout.addWidget(self.neuraltextures_bar, 2, 1, 1, 1)
         self.face2face_bar = prediction_bar.PredictionsBarGraph(self)
-        self.bottom_layout.addWidget(self.face2face_bar, 3, 1, 1, 1)
+        self.predictions_layout.addWidget(self.face2face_bar, 3, 1, 1, 1)
         self.faceshift_bar = prediction_bar.PredictionsBarGraph(self)
-        self.bottom_layout.addWidget(self.faceshift_bar, 4, 1, 1, 1)
-        self.bottom_layout.addWidget(self.scroll_area, 0, 1, 6, 1)
+        self.predictions_layout.addWidget(self.faceshift_bar, 4, 1, 1, 1)
+        self.scroll_area.setWidget(self.predictions_widget)
 
     def update_predictions_texts(self, predictions):
         self.faceswap.setText(f"Faceswap : {predictions[0][0]:.4f}")
@@ -185,25 +189,16 @@ class VideoPlayerApp(QWidget):
         self.faceswap_bar.set_predictions(
             predictions[0], models_index, self.selected_models
         )
+        self.deepfake_bar.set_predictions(
+            predictions[1], models_index, self.selected_models
+        )
+        self.neuraltextures_bar.set_predictions(
+            predictions[2], models_index, selected_model
+        )
+        self.face2face_bar.set_predictions(predictions[3], models_index, selected_model)
+        self.faceshift_bar.set_predictions(predictions[4], models_index, selected_model)
         self.update_predictions_texts(predictions)
 
-    # TODO delete this function
-    # def setup_predictions_text(self, predictions):
-    #     if self.selected_model is None:
-    #         self.predictions_label.setText(
-    #             "Model Predictions:\n"
-    #             + "\n".join(
-    #                 [
-    #                     f"{model}: {prediction:.4f}"
-    #                     for model, prediction in zip(models_index, predictions)
-    #                 ]
-    #             )
-    #         )
-    #     else:
-    #         self.predictions_label.setText(
-    #             f"Model Predictions:\n{self.selected_model}: {predictions[0]:.4f}"
-    #         )
-    #
     def timerEvent(self):
         self.selected_models = self.model_dropdown.returnSelectedItems()
         # Read a frame from the video
@@ -223,20 +218,22 @@ class VideoPlayerApp(QWidget):
                     # Preprocess the face image for model input
                     input_tensor = model_functions.preprocess_input(face_roi)
                     predictions = []
-                    for selected_model in self.selected_models:
+                    for model in models_index:
                         # use model
-                        prediction = model_functions.predict_with_model(
-                            input_tensor,
-                            self.models,
-                            selected_model=selected_model,
-                        )
-                        predictions.append(prediction)
+                        if model not in self.selected_models:
+                            predictions.append([0])
+                            continue
+                        else:
+                            prediction = model_functions.predict_with_model(
+                                input_tensor,
+                                self.models,
+                                selected_model=model,
+                            )
+                            predictions.append(prediction)
 
+                    self.update_label(face_1, predictions, frame)
                     self.update_predictions(predictions, self.selected_models)
                     self.update_predictions_texts(predictions)
-                    # predictions_y = self.prediction_bar.return_bar_y()
-                    # self.setup_predictions_text(predictions)
-                    self.update_label(face_1, predictions, frame)
                 # Calculate scaling factors
                 height_scale = self.video_label.height() / frame.shape[0]
                 width_scale = self.video_label.width() / frame.shape[1]
@@ -249,12 +246,8 @@ class VideoPlayerApp(QWidget):
                 pixmap = QPixmap.fromImage(q_img)
                 self.video_label.setPixmap(pixmap)
                 self.video_label.setAlignment(Qt.AlignCenter)
-                # Update the progress bar based on the current time
-                current_time = self.cap.get(cv2.CAP_PROP_POS_MSEC)
-                # self.progress_widget.progress_bar.setValue(int(current_time))
-                # self.progress_widget.update_time_label(current_time)
+
             else:
-                # Stop the timer when the video ends
                 self.playing = False
                 self.play_button.setText("Play")
                 self.load_button.show()
@@ -281,7 +274,7 @@ class VideoPlayerApp(QWidget):
         max_index = predictions.index(max(predictions))
         self.is_fake = 1 if max(predictions) > 0.5 else 0
         label = (
-            f"Faked with model: {self.selected_models[max_index]}"
+            f"Faked with model: {models_index[max_index]}"
             if self.is_fake
             else "Genuine"
         )

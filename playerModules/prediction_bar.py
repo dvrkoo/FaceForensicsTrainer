@@ -8,8 +8,8 @@ class PredictionsBarGraph(QWidget):
         super().__init__(parent)
         self.predictions = []
         self.models_index = []
-        self.placeholder_text = "No predictions"
-        self.past_predictions = [[]]
+        self.placeholder_text = "No predictions/Not selected"
+        self.past_predictions = [0]
 
     def update_width(self):
         total_width = len(self.past_predictions) * (10)
