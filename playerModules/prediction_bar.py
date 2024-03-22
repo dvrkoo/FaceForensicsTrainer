@@ -52,7 +52,7 @@ class PredictionsBarGraph(QWidget):
             bar_height = int(bar_height)  # Convert to int
             painter.fillRect(
                 bar_x,
-                60,
+                int(self.height() * 0.6),
                 bar_width,
                 bar_height,
                 QColor(255, 0, 0)

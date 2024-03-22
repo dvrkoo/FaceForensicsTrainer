@@ -80,22 +80,14 @@ class VideoPlayerApp(QWidget):
         self.load_button = QPushButton("Load Video", self)
         self.load_button.clicked.connect(self.load_video)
         buttons_layout.addWidget(self.load_button)
-        # Progress bar
-        # self.progress_widget = ProgressBarWithTimeLabel(self)
-        # layout.addWidget(self.progress_widget)
-        # Add predictions label
-        # Add bottom layout
+
         self.bottom_layout = QHBoxLayout()
         layout.addLayout(self.bottom_layout, stretch=1)
-        # self.prediction_bar = prediction_bar.PredictionsBarGraph(self)
-        # self.bottom_layout.addWidget(self.prediction_bar, 0, 1, 5, 1)
         # Create a QScrollArea
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
-        # scroll_area.setWidget(self.prediction_bar)
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
 
-        self.bottom_layout.addWidget(self.scroll_area)
         # Add the scroll area to your layout
         self.setup_predictions_text()
 
@@ -103,21 +95,18 @@ class VideoPlayerApp(QWidget):
         self.text_widget = QGridLayout()
         self.faceswap = QLabel("Faceswap : ")
         self.faceswap.setFixedWidth(150)
-        # self.faceswap.setGeometry(0, bars_y[0], 5, 5)
         self.text_widget.addWidget(self.faceswap, 0, 0, 1, 1)
         self.deepfake = QLabel("Deepfake : ")
-        # deepfake.setGeometry(0, bars_y[1], 5, 5)
         self.text_widget.addWidget(self.deepfake, 1, 0, 1, 1)
         self.neuraltextures = QLabel("Neuraltextures : ")
-        # neuraltextures.setGeometry(0, bars_y[2], 100, 100)
         self.text_widget.addWidget(self.neuraltextures, 2, 0, 1, 1)
         self.face2face = QLabel("Face2Face : ")
-        # face2face.setGeometry(0, bars_y[3], 100, 100)
         self.text_widget.addWidget(self.face2face, 3, 0, 1, 1)
         self.faceshift = QLabel("Faceshifter : ")
-        # faceshift.setGeometry(0, bars_y[4], 100, 100)
         self.text_widget.addWidget(self.faceshift, 4, 0, 1, 1)
+        self.text_widget.addWidget(self.model_dropdown, 5, 0, 1, 1)
         self.bottom_layout.addLayout(self.text_widget)
+        self.bottom_layout.addWidget(self.scroll_area)
         self.setup_predictions_bars()
 
     def setup_predictions_bars(self):
@@ -153,6 +142,10 @@ class VideoPlayerApp(QWidget):
             # If a file is selected, initialize video capture
             self.cap = cv2.VideoCapture(file_path)
             self.faceswap_bar.past_predictions = [0]
+            self.deepfake_bar.past_predictions = [0]
+            self.neuraltextures_bar.past_predictions = [0]
+            self.face2face_bar.past_predictions = [0]
+            self.faceshift_bar.past_predictions = [0]
             # Get video dimensions
             self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
