@@ -156,14 +156,17 @@ class VideoPlayerApp(QWidget):
             # Check if the timer has been initialized before checking isActive
             if hasattr(self, "timer"):
                 self.timer.start(33)  # ~30 fps
-        self.load_button.hide()
+            self.load_button.hide()
+        else:
+            # TODO handle the case where the user cancels the file dialog
+            pass
 
-        # Set the maximum value for the progress bar based on the video duration
-        total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        fps = int(self.cap.get(cv2.CAP_PROP_FPS))
-        video_duration = total_frames / fps * 1000
-        # self.progress_widget.progress_bar.setMaximum(int(video_duration))
-        # self.progress_widget.progress_bar.show()
+        # # Set the maximum value for the progress bar based on the video duration
+        # total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        # fps = int(self.cap.get(cv2.CAP_PROP_FPS))
+        # video_duration = total_frames / fps * 1000
+        # # self.progress_widget.progress_bar.setMaximum(int(video_duration))
+        # # self.progress_widget.progress_bar.show()
 
     def play_pause_video(self):
         # Toggle between playing and pausing the video
