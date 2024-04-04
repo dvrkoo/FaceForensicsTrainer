@@ -61,6 +61,7 @@ class VideoPlayerApp(QWidget):
         video_layout.setContentsMargins(0, 0, 0, 0)
         layout.addLayout(video_layout, stretch=1)
         buttons_layout = QVBoxLayout()
+        video_layout.addLayout(buttons_layout)
         self.model_dropdown = CheckableComboBox()
         self.model_dropdown.addItems(models_index)
         self.video_label = QLabel(self)
@@ -69,7 +70,6 @@ class VideoPlayerApp(QWidget):
         self.video_label.setAlignment(Qt.AlignLeft)
         buttons_layout.addWidget(self.model_dropdown)
         video_layout.addWidget(self.video_label)
-        video_layout.addLayout(buttons_layout)
         buttons_layout.setAlignment(Qt.AlignCenter)
         # Add play and pause buttons
         self.play_button = QPushButton("Pause", self)
@@ -80,6 +80,8 @@ class VideoPlayerApp(QWidget):
         self.load_button = QPushButton("Load Video", self)
         self.load_button.clicked.connect(self.load_video)
         buttons_layout.addWidget(self.load_button)
+        self.progress_bar = ProgressBarWithTimeLabel(self)
+        layout.addWidget(self.progress_bar)
 
         self.bottom_layout = QHBoxLayout()
         layout.addLayout(self.bottom_layout, stretch=1)
@@ -104,7 +106,8 @@ class VideoPlayerApp(QWidget):
         self.text_widget.addWidget(self.face2face, 3, 0, 1, 1)
         self.faceshift = QLabel("Faceshifter : ")
         self.text_widget.addWidget(self.faceshift, 4, 0, 1, 1)
-        self.text_widget.addWidget(self.model_dropdown, 5, 0, 1, 1)
+        self.credits = QPushButton("Credits")
+        self.text_widget.addWidget(self.credits, 5, 0, 1, 1)
         self.bottom_layout.addLayout(self.text_widget)
         self.bottom_layout.addWidget(self.scroll_area)
         self.setup_predictions_bars()
@@ -141,6 +144,8 @@ class VideoPlayerApp(QWidget):
         if file_path:
             # If a file is selected, initialize video capture
             self.cap = cv2.VideoCapture(file_path)
+            self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            self.current_frame = 0
             self.faceswap_bar.past_predictions = [0]
             self.deepfake_bar.past_predictions = [0]
             self.neuraltextures_bar.past_predictions = [0]
@@ -157,16 +162,7 @@ class VideoPlayerApp(QWidget):
             if hasattr(self, "timer"):
                 self.timer.start(33)  # ~30 fps
             self.load_button.hide()
-        else:
-            # TODO handle the case where the user cancels the file dialog
-            pass
-
-        # # Set the maximum value for the progress bar based on the video duration
-        # total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        # fps = int(self.cap.get(cv2.CAP_PROP_FPS))
-        # video_duration = total_frames / fps * 1000
-        # # self.progress_widget.progress_bar.setMaximum(int(video_duration))
-        # # self.progress_widget.progress_bar.show()
+            self.progress_bar.set_frame_number(self.total_frames)
 
     def play_pause_video(self):
         # Toggle between playing and pausing the video
@@ -199,8 +195,8 @@ class VideoPlayerApp(QWidget):
         self.selected_models = self.model_dropdown.returnSelectedItems()
         # Read a frame from the video
         if self.playing:
+            self.current_frame += 1
             ret, frame = self.cap.read()
-
             if ret:
                 frame = model_functions.convert_color_space(frame)
                 # Perform face detection using dlib
@@ -242,6 +238,7 @@ class VideoPlayerApp(QWidget):
                 pixmap = QPixmap.fromImage(q_img)
                 self.video_label.setPixmap(pixmap)
                 self.video_label.setAlignment(Qt.AlignCenter)
+                self.progress_bar.update_time_label(self.current_frame)
 
             else:
                 self.playing = False
