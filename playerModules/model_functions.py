@@ -5,6 +5,7 @@ import torch.nn as nn
 import os
 import sys
 from PIL import Image
+import numpy as np
 
 from dataset.transform import xception_default_data_transforms
 from network.models import model_selection
@@ -110,3 +111,8 @@ def predict_with_model(
         return [output[0][1].item()]
     else:
         return [0]
+
+
+def preprocess_freq(face_roi):
+    face_roi = np.array(face_roi)
+    pass

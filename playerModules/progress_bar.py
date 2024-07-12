@@ -19,16 +19,17 @@ class ProgressBarWithTimeLabel(QWidget):
         # Set up style sheet
         self.setStyleSheet(
             "QProgressBar {text-align: center;}"
-            "QProgressBar::chunk {background-color: green;}"
+            "QProgressBar::chunk {background-color: white;}"
             "QLabel {margin-left: 5px;}"
         )
 
         # Connect signals and slots
-        self.progress_bar.valueChanged.connect(self.update_time_label)
+        # self.progress_bar.valueChanged.connect(self.update_time_label)
+
+    def set_frame_number(self, frame):
+        self.total_frames = frame
 
     def update_time_label(self, value):
-        # Update the time label based on the progress bar value
-        total_seconds = value / 1000
-        minutes = int(total_seconds // 60)
-        seconds = int(total_seconds % 60)
-        self.time_label.setText(f"{minutes}:{seconds:02d}")
+        curr_frame = (value / self.total_frames) * 100
+        self.progress_bar.setValue(int(curr_frame))
+        self.time_label.setText(f"{value}/{self.total_frames:02d}")
