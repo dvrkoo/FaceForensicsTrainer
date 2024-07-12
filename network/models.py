@@ -135,10 +135,10 @@ def model_selection(modelname, num_out_classes, dropout=None):
             ["image"],
             None,
         )
-    elif modelname == "resnet18":
+    elif modelname == "resnet50":
         return (
             TransferModel(
-                modelchoice="resnet18", dropout=dropout, num_out_classes=num_out_classes
+                modelchoice="resnet50", dropout=dropout, num_out_classes=num_out_classes
             ),
             224,
             True,

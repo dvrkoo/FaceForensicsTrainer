@@ -257,7 +257,7 @@ class VideoPlayerApp(QWidget):
 
 if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-    QApplication.setStyle("Fusion")
+    QApplication.setStyle("GTK+")
     app = QApplication(sys.argv)
     window = VideoPlayerApp()
     window.show()

@@ -1,6 +1,8 @@
 import os
 from datetime import datetime
+from pathlib import Path
 
+import numpy as np
 import argparse
 import torch
 import torch.multiprocessing
@@ -11,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 from tqdm import tqdm
 
-from dataset.transform import CustomImageDataset
+from dataset.transform import CustomImageDataset, CustomImageDatasetFromFreq
 from network.models import model_selection
 
 if torch.cuda.is_available():
@@ -23,16 +25,37 @@ torch.multiprocessing.set_sharing_strategy("file_system")
 BATCH_SIZE = 32
 transform = transforms.Compose(
     [
-        transforms.Resize((299, 299)),
+        transforms.Resize((224, 224)),
         transforms.ToTensor(),
         transforms.Normalize([0.5] * 3, [0.5] * 3),
     ]
 )
 
+
 # Define dataset paths
+def load_dataset_from_freq(data_root, data_list_from_freq):
+    print(data_root)
+    # sort data_list_from_freq
+    data_list_from_freq = sorted(data_list_from_freq)
+    # print(data_list_from_freq)
+
+    train_dataset = CustomImageDatasetFromFreq(
+        data_root, data_list_from_freq[1], transform=transform
+    )
+    val_dataset = CustomImageDatasetFromFreq(
+        data_root, data_list_from_freq[2], transform=transform
+    )
+    test_dataset = CustomImageDatasetFromFreq(
+        data_root, data_list_from_freq[0], transform=transform
+    )
+    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
+    valid_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
+    return train_loader, valid_loader, test_loader
 
 
 def load_dataset(data_root):
+    print(data_root)
     # Create custom datasets for each split
     train_dataset = CustomImageDataset(
         os.path.join(data_root, "train"), transform=transform
@@ -51,7 +74,7 @@ def load_dataset(data_root):
 
 
 def load_model(pretrained):
-    model, *_ = model_selection(modelname="xception", num_out_classes=2)
+    model, *_ = model_selection(modelname="resnet50", num_out_classes=2)
     if pretrained:
         print("Loading Model")
         checkpoint = torch.load("./model_pre.pt")
@@ -121,26 +144,43 @@ def evaluate(model, criterion, loader, epoch, device, writer, mode):
     writer.add_scalar(f"{mode}/Average Loss", running_loss / len(loader), epoch)
 
 
+def get_data_lists(model_name, data_dir="./dataListFreq"):
+    data_lists = []
+    path = Path(data_dir)
+
+    # Look for files that start with the model name and end with '_paths.npy'
+    for file in path.glob(f"{model_name}*_paths.npy"):
+        data_lists.append(str(file))
+
+    if not data_lists:
+        print(f"No matching files found for {model_name}")
+
+    return data_lists
+
+
 # Save the model state if validation accuracy is better
 # Save training statistics
 if __name__ == "__main__":
+    torch.cuda.empty_cache()
     p = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     p.add_argument("--pretrained", action=argparse.BooleanOptionalAction)
     p.add_argument("--model_path", "-mp", type=str, default=None)
     p.add_argument("--epochs", "-e", type=int, default=18)
+    p.add_argument("--data_root", "-dr", type=str, default=None)
 
     args = p.parse_args()
-
-    data_root = "/users/nick/deepfake_crops/"  # the root folder containing 'real' and 'fake' subfolders
+    data_root = args.data_root
+    # model_name = data_root.rstrip("/").split("/")[-1].replace("_crops", "")
+    # data_list_from_freq = get_data_lists(model_name)
     train_loader, val_loader, test_loader = load_dataset(data_root)
     model = load_model(args.pretrained)
     optimizer = optim.Adam(model.parameters(), lr=0.0001)
     criterion = nn.CrossEntropyLoss()
     device = torch.device("cuda" if torch.cuda.is_available() else "mps")
     writer = SummaryWriter(
-        "./SummaryWriter/xception_deepfake_1" + datetime.now().strftime("%Y%m%d-%H%M%S")
+        "./SummaryWriter/Resnet_faceshifter" + datetime.now().strftime("%Y%m%d-%H%M%S")
     )
-
+    print(len(train_loader))
     # move model to cuda
     model.to(device)
     # save the model if an exception occur
@@ -151,7 +191,7 @@ if __name__ == "__main__":
             )
             evaluate(model, criterion, val_loader, epoch, device, writer, mode="val")
             evaluate(model, criterion, test_loader, epoch, device, writer, mode="test")
-            torch.mps.empty_cache()
+            torch.cuda.empty_cache()
     except Exception as e:
         print(e)
         torch.save(
