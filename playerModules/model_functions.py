@@ -111,8 +111,3 @@ def predict_with_model(
         return [output[0][1].item()]
     else:
         return [0]
-
-
-def preprocess_freq(face_roi):
-    face_roi = np.array(face_roi)
-    pass

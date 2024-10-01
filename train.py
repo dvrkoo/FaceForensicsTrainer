@@ -32,28 +32,6 @@ transform = transforms.Compose(
 )
 
 
-# Define dataset paths
-def load_dataset_from_freq(data_root, data_list_from_freq):
-    print(data_root)
-    # sort data_list_from_freq
-    data_list_from_freq = sorted(data_list_from_freq)
-    # print(data_list_from_freq)
-
-    train_dataset = CustomImageDatasetFromFreq(
-        data_root, data_list_from_freq[1], transform=transform
-    )
-    val_dataset = CustomImageDatasetFromFreq(
-        data_root, data_list_from_freq[2], transform=transform
-    )
-    test_dataset = CustomImageDatasetFromFreq(
-        data_root, data_list_from_freq[0], transform=transform
-    )
-    train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True)
-    valid_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False)
-    test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False)
-    return train_loader, valid_loader, test_loader
-
-
 def load_dataset(data_root):
     print(data_root)
     # Create custom datasets for each split
@@ -144,20 +122,6 @@ def evaluate(model, criterion, loader, epoch, device, writer, mode):
     writer.add_scalar(f"{mode}/Average Loss", running_loss / len(loader), epoch)
 
 
-def get_data_lists(model_name, data_dir="./dataListFreq"):
-    data_lists = []
-    path = Path(data_dir)
-
-    # Look for files that start with the model name and end with '_paths.npy'
-    for file in path.glob(f"{model_name}*_paths.npy"):
-        data_lists.append(str(file))
-
-    if not data_lists:
-        print(f"No matching files found for {model_name}")
-
-    return data_lists
-
-
 # Save the model state if validation accuracy is better
 # Save training statistics
 if __name__ == "__main__":
@@ -170,8 +134,6 @@ if __name__ == "__main__":
 
     args = p.parse_args()
     data_root = args.data_root
-    # model_name = data_root.rstrip("/").split("/")[-1].replace("_crops", "")
-    # data_list_from_freq = get_data_lists(model_name)
     train_loader, val_loader, test_loader = load_dataset(data_root)
     model = load_model(args.pretrained)
     optimizer = optim.Adam(model.parameters(), lr=0.0001)

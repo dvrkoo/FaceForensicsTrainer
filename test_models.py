@@ -25,7 +25,7 @@ transform = transforms.Compose(
 def calculate_tpr_tnr(tp, fn, tn, fp):
     tpr = tp / (tp + fn) if tp + fn > 0 else 0
     tnr = tn / (tn + fp) if tn + fp > 0 else 0
-    return tpr, tnr
+    return tpr * 100, tnr * 100
 
 
 class CustomImageDataset:
@@ -91,9 +91,6 @@ for model_name in os.listdir("./trained_models/"):
         models[extracted_model_name] = model
         # Load the validation data loader for this model
         data_prefix = f"/home/nick/ff_crops/{extracted_model_name}_crops/"
-        # dataset_paths = np.load(
-        #     f"./dataListFreq/{extracted_model_name}_paths.npy", allow_pickle=True
-        # )
 
         val_data_loader = load_dataset(data_prefix)
         val_data_loaders[model_name] = val_data_loader
