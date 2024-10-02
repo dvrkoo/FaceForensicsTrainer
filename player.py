@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import (
     QWidget,
     QSizePolicy,
     QScrollArea,
+    QGridLayout,
 )
 
 
@@ -55,40 +56,83 @@ class VideoPlayerApp(QWidget):
     def setup_ui(self):
         # Set up layout
         layout = QVBoxLayout(self)
+        video_layout = QHBoxLayout()
+        video_layout.setSpacing(0)
+        video_layout.setContentsMargins(0, 0, 0, 0)
+        layout.addLayout(video_layout, stretch=1)
+        buttons_layout = QVBoxLayout()
+        video_layout.addLayout(buttons_layout)
         self.model_dropdown = CheckableComboBox()
         self.model_dropdown.addItems(models_index)
-        layout.addWidget(self.model_dropdown)
         self.video_label = QLabel(self)
         # self.video_label.setScaledContents(True)
         self.video_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
-        layout.addWidget(self.video_label)
+        self.video_label.setAlignment(Qt.AlignLeft)
+        buttons_layout.addWidget(self.model_dropdown)
+        video_layout.addWidget(self.video_label)
+        buttons_layout.setAlignment(Qt.AlignCenter)
         # Add play and pause buttons
         self.play_button = QPushButton("Pause", self)
         self.play_button.clicked.connect(self.play_pause_video)
         self.play_button.hide()
-        layout.addWidget(self.play_button)
+        buttons_layout.addWidget(self.play_button)
         # Add a button to open a file dialog
         self.load_button = QPushButton("Load Video", self)
         self.load_button.clicked.connect(self.load_video)
-        layout.addWidget(self.load_button)
-        # Progress bar
-        self.progress_widget = ProgressBarWithTimeLabel(self)
-        layout.addWidget(self.progress_widget)
-        # Add predictions label
-        self.predictions_label = QLabel(self)
-        layout.addWidget(self.predictions_label)
-        # Add bottom layout
-        bottom_layout = QHBoxLayout()
-        layout.addLayout(bottom_layout)
-        # add prediction bar
-        self.prediction_bar = prediction_bar.PredictionsBarGraph(self)
+        buttons_layout.addWidget(self.load_button)
+        self.progress_bar = ProgressBarWithTimeLabel(self)
+        layout.addWidget(self.progress_bar)
+
+        self.bottom_layout = QHBoxLayout()
+        layout.addLayout(self.bottom_layout, stretch=1)
         # Create a QScrollArea
-        scroll_area = QScrollArea(self)
-        scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
-        scroll_area.setWidget(self.prediction_bar)
-        scroll_area.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
+
         # Add the scroll area to your layout
-        layout.addWidget(scroll_area)
+        self.setup_predictions_text()
+
+    def setup_predictions_text(self):
+        self.text_widget = QGridLayout()
+        self.faceswap = QLabel("Faceswap : ")
+        self.faceswap.setFixedWidth(150)
+        self.text_widget.addWidget(self.faceswap, 0, 0, 1, 1)
+        self.deepfake = QLabel("Deepfake : ")
+        self.text_widget.addWidget(self.deepfake, 1, 0, 1, 1)
+        self.neuraltextures = QLabel("Neuraltextures : ")
+        self.text_widget.addWidget(self.neuraltextures, 2, 0, 1, 1)
+        self.face2face = QLabel("Face2Face : ")
+        self.text_widget.addWidget(self.face2face, 3, 0, 1, 1)
+        self.faceshift = QLabel("Faceshifter : ")
+        self.text_widget.addWidget(self.faceshift, 4, 0, 1, 1)
+        self.credits = QPushButton("Credits")
+        self.text_widget.addWidget(self.credits, 5, 0, 1, 1)
+        self.bottom_layout.addLayout(self.text_widget)
+        self.bottom_layout.addWidget(self.scroll_area)
+        self.setup_predictions_bars()
+
+    def setup_predictions_bars(self):
+        self.predictions_widget = QWidget()
+        self.predictions_layout = QGridLayout(self.predictions_widget)
+        self.faceswap_bar = prediction_bar.PredictionsBarGraph(self)
+        self.predictions_layout.addWidget(self.faceswap_bar, 0, 1, 1, 1)
+        self.deepfake_bar = prediction_bar.PredictionsBarGraph(self)
+        self.predictions_layout.addWidget(self.deepfake_bar, 1, 1, 1, 1)
+        self.neuraltextures_bar = prediction_bar.PredictionsBarGraph(self)
+        self.predictions_layout.addWidget(self.neuraltextures_bar, 2, 1, 1, 1)
+        self.face2face_bar = prediction_bar.PredictionsBarGraph(self)
+        self.predictions_layout.addWidget(self.face2face_bar, 3, 1, 1, 1)
+        self.faceshift_bar = prediction_bar.PredictionsBarGraph(self)
+        self.predictions_layout.addWidget(self.faceshift_bar, 4, 1, 1, 1)
+        self.scroll_area.setWidget(self.predictions_widget)
+
+    def update_predictions_texts(self, predictions):
+        self.faceswap.setText(f"Faceswap : {predictions[0][0]:.4f}")
+        self.deepfake.setText(f"Deepfake : {predictions[1][0]:.4f}")
+        self.neuraltextures.setText(f"Neuraltextures : {predictions[2][0]:.4f}")
+        self.face2face.setText(f"Face2Face : {predictions[3][0]:.4f}")
+        self.faceshift.setText(f"Faceshifter : {predictions[4][0]:.4f}")
 
     def load_video(self):
         # Open a file dialog to choose a video file
@@ -100,25 +144,26 @@ class VideoPlayerApp(QWidget):
         if file_path:
             # If a file is selected, initialize video capture
             self.cap = cv2.VideoCapture(file_path)
-            self.prediction_bar.past_predictions = [[] for _ in range(5)]
+            self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            self.current_frame = 0
+            self.faceswap_bar.past_predictions = [0]
+            self.deepfake_bar.past_predictions = [0]
+            self.neuraltextures_bar.past_predictions = [0]
+            self.face2face_bar.past_predictions = [0]
+            self.faceshift_bar.past_predictions = [0]
             # Get video dimensions
             self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             # self.video_label.setFixedSize(self.video_width, self.video_height)
-            self.playing = True
+            self.playing = False
             # show the play button
             self.play_button.show()
+            self.play_button.setText("Play")
             # Check if the timer has been initialized before checking isActive
             if hasattr(self, "timer"):
                 self.timer.start(33)  # ~30 fps
-        self.load_button.hide()
-
-        # Set the maximum value for the progress bar based on the video duration
-        total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        fps = int(self.cap.get(cv2.CAP_PROP_FPS))
-        video_duration = total_frames / fps * 1000
-        self.progress_widget.progress_bar.setMaximum(int(video_duration))
-        self.progress_widget.progress_bar.show()
+            self.load_button.hide()
+            self.progress_bar.set_frame_number(self.total_frames)
 
     def play_pause_video(self):
         # Toggle between playing and pausing the video
@@ -134,33 +179,25 @@ class VideoPlayerApp(QWidget):
             self.timer.stop()
 
     def update_predictions(self, predictions, selected_model):
-        self.prediction_bar.set_predictions(
-            predictions, models_index, self.selected_models
+        self.faceswap_bar.set_predictions(
+            predictions[0], models_index, self.selected_models
         )
-
-    # TODO delete this function
-    def setup_predictions_text(self, predictions):
-        if self.selected_model is None:
-            self.predictions_label.setText(
-                "Model Predictions:\n"
-                + "\n".join(
-                    [
-                        f"{model}: {prediction:.4f}"
-                        for model, prediction in zip(models_index, predictions)
-                    ]
-                )
-            )
-        else:
-            self.predictions_label.setText(
-                f"Model Predictions:\n{self.selected_model}: {predictions[0]:.4f}"
-            )
+        self.deepfake_bar.set_predictions(
+            predictions[1], models_index, self.selected_models
+        )
+        self.neuraltextures_bar.set_predictions(
+            predictions[2], models_index, selected_model
+        )
+        self.face2face_bar.set_predictions(predictions[3], models_index, selected_model)
+        self.faceshift_bar.set_predictions(predictions[4], models_index, selected_model)
+        self.update_predictions_texts(predictions)
 
     def timerEvent(self):
         self.selected_models = self.model_dropdown.returnSelectedItems()
         # Read a frame from the video
         if self.playing:
+            self.current_frame += 1
             ret, frame = self.cap.read()
-
             if ret:
                 frame = model_functions.convert_color_space(frame)
                 # Perform face detection using dlib
@@ -174,18 +211,22 @@ class VideoPlayerApp(QWidget):
                     # Preprocess the face image for model input
                     input_tensor = model_functions.preprocess_input(face_roi)
                     predictions = []
-                    for selected_model in self.selected_models:
+                    for model in models_index:
                         # use model
-                        prediction = model_functions.predict_with_model(
-                            input_tensor,
-                            self.models,
-                            selected_model=selected_model,
-                        )
-                        predictions.append(prediction)
+                        if model not in self.selected_models:
+                            predictions.append([0])
+                            continue
+                        else:
+                            prediction = model_functions.predict_with_model(
+                                input_tensor,
+                                self.models,
+                                selected_model=model,
+                            )
+                            predictions.append(prediction)
 
-                    self.update_predictions(predictions, self.selected_models)
-                    # self.setup_predictions_text(predictions)
                     self.update_label(face_1, predictions, frame)
+                    self.update_predictions(predictions, self.selected_models)
+                    self.update_predictions_texts(predictions)
                 # Calculate scaling factors
                 height_scale = self.video_label.height() / frame.shape[0]
                 width_scale = self.video_label.width() / frame.shape[1]
@@ -198,12 +239,9 @@ class VideoPlayerApp(QWidget):
                 pixmap = QPixmap.fromImage(q_img)
                 self.video_label.setPixmap(pixmap)
                 self.video_label.setAlignment(Qt.AlignCenter)
-                # Update the progress bar based on the current time
-                current_time = self.cap.get(cv2.CAP_PROP_POS_MSEC)
-                self.progress_widget.progress_bar.setValue(int(current_time))
-                self.progress_widget.update_time_label(current_time)
+                self.progress_bar.update_time_label(self.current_frame)
+
             else:
-                # Stop the timer when the video ends
                 self.playing = False
                 self.play_button.setText("Play")
                 self.load_button.show()
@@ -230,7 +268,7 @@ class VideoPlayerApp(QWidget):
         max_index = predictions.index(max(predictions))
         self.is_fake = 1 if max(predictions) > 0.5 else 0
         label = (
-            f"Faked with model: {self.selected_models[max_index]}"
+            f"Faked with model: {models_index[max_index]}"
             if self.is_fake
             else "Genuine"
         )
@@ -256,8 +294,13 @@ class VideoPlayerApp(QWidget):
 
 
 if __name__ == "__main__":
-    device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-    QApplication.setStyle("GTK+")
+    if torch.backends.mps.is_available():
+        device = torch.device("mps")
+    elif torch.cuda.is_available():
+        device = torch.device("cuda")
+    else:
+        device = torch.device("cpu")
+    QApplication.setStyle("Fusion")
     app = QApplication(sys.argv)
     window = VideoPlayerApp()
     window.show()

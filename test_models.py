@@ -12,7 +12,6 @@ from torch.utils.data import DataLoader
 # from train_classifier import create_data_loaders
 
 # Check if GPU is available
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 transform = transforms.Compose(
     [
         transforms.Resize((224, 224)),

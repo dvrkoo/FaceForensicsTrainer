@@ -23,6 +23,7 @@ else:
 
 torch.multiprocessing.set_sharing_strategy("file_system")
 BATCH_SIZE = 32
+
 transform = transforms.Compose(
     [
         transforms.Resize((224, 224)),
