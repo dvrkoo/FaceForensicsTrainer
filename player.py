@@ -25,6 +25,7 @@ from playerModules import model_functions, prediction_bar
 from playerModules.models_dropdown import CheckableComboBox
 from playerModules.progress_bar import ProgressBarWithTimeLabel
 from playerModules.timer import VideoTimer
+from Trufor.src.trufor_test import load_model
 
 models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
 
@@ -47,6 +48,9 @@ class VideoPlayerApp(QWidget):
         # setup video playing state
         self.playing = False
         self.is_fake = False
+
+    def setup_trufor():
+        pass
 
     def model_selection_changed(self, index):
         # Slot to be triggered when the selected model changes
@@ -98,6 +102,19 @@ class VideoPlayerApp(QWidget):
 
         self.setup_predictions_text()
 
+    def setup_image_prediction(self):
+        self.progress_bar = ProgressBarWithTimeLabel(self)
+        self.layout.addWidget(self.progress_bar)
+
+        self.bottom_layout = QHBoxLayout()
+        self.layout.addLayout(self.bottom_layout, stretch=1)
+
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
+        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
+
+        # self.setup_predictions_text()
+
     def setup_predictions_text(self):
         self.bottom_flag = True
         self.text_widget = QGridLayout()
@@ -141,40 +158,66 @@ class VideoPlayerApp(QWidget):
         self.faceshift.setText(f"Faceshifter : {predictions[4][0]:.4f}% Fake")
 
     def load_video(self):
-        # Open a file dialog to choose a video file
+        # Open a file dialog to choose a video or image file
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(
-            self, "Open Video File", "", "Video Files (*.mp4 *.avi *.jpg *png)"
+            self,
+            "Open Video/Image File",
+            "",
+            "Video Files (*.mp4 *.avi *.jpg *.png)",
         )
 
         if file_path:
             # If a file is selected, initialize video capture
             self.cap = cv2.VideoCapture(file_path)
+            # Get the total number of frames in the video (1 for an image)
             self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-            if self.total_frames == 1:
+
+            # Check if it's an image by looking at file extension
+            if file_path.endswith((".jpg", ".png")):
+                # load_model(file_path)
                 pass
-            elif not self.bottom_flag:
-                self.setup_video_prediction()
-            # if len == 1 TruFor
+
+            if not self.bottom_flag:  # If it's a video, proceed to set up predictions
+                if file_path.endswith((".jpg", ".png")):
+                    self.setup_image_prediction()
+                else:
+                    self.setup_video_prediction()
+                    self.faceswap_bar.past_predictions = [0]
+                    self.deepfake_bar.past_predictions = [0]
+                    self.neuraltextures_bar.past_predictions = [0]
+                    self.face2face_bar.past_predictions = [0]
+                    self.faceshift_bar.past_predictions = [0]
+
             self.current_frame = 0
-            self.faceswap_bar.past_predictions = [0]
-            self.deepfake_bar.past_predictions = [0]
-            self.neuraltextures_bar.past_predictions = [0]
-            self.face2face_bar.past_predictions = [0]
-            self.faceshift_bar.past_predictions = [0]
             # Get video dimensions
             self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            # self.video_label.setFixedSize(self.video_width, self.video_height)
+            # Show the play button and reset the state
             self.playing = False
-            # show the play button
             self.play_button.show()
             self.play_button.setText("Play")
-            # Check if the timer has been initialized before checking isActive
+            # Start the video timer
             if hasattr(self, "timer"):
-                self.timer.start(33)  # ~30 fps
+                self.timer.start(33)  # ~30 fps for video
             self.load_button.hide()
-            self.progress_bar.set_frame_number(self.total_frames)
+            if self.bottom_flag:
+                self.progress_bar.set_frame_number(self.total_frames)
+
+    def display_frame(self, frame):
+        """Helper function to display an image or video frame in the QLabel."""
+        # Calculate scaling factors
+        height_scale = self.video_label.height() / frame.shape[0]
+        width_scale = self.video_label.width() / frame.shape[1]
+        scale = min(height_scale, width_scale)
+        # Resize the frame to fit the window
+        frame_resized = cv2.resize(frame, None, fx=scale, fy=scale)
+        # Convert the OpenCV image to a QImage
+        q_img = self.opencv_to_qimage(frame_resized)
+        # Display the QImage in the QLabel
+        pixmap = QPixmap.fromImage(q_img)
+        self.video_label.setPixmap(pixmap)
+        self.video_label.setAlignment(Qt.AlignCenter)
 
     def play_pause_video(self):
         # Toggle between playing and pausing the video
