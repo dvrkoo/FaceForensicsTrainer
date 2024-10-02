@@ -48,6 +48,8 @@ class VideoPlayerApp(QWidget):
         # setup video playing state
         self.playing = False
         self.is_fake = False
+        self.progress_bar = None
+        self.bottom_layout = None
 
     def setup_trufor():
         pass
@@ -90,28 +92,30 @@ class VideoPlayerApp(QWidget):
         # self.setup_video_prediction()
 
     def setup_video_prediction(self):
-        self.progress_bar = ProgressBarWithTimeLabel(self)
-        self.layout.addWidget(self.progress_bar)
+        if not self.progress_bar and not self.bottom_layout:
+            self.progress_bar = ProgressBarWithTimeLabel(self)
+            self.layout.addWidget(self.progress_bar)
 
-        self.bottom_layout = QHBoxLayout()
-        self.layout.addLayout(self.bottom_layout, stretch=1)
+            self.bottom_layout = QHBoxLayout()
+            self.layout.addLayout(self.bottom_layout, stretch=1)
 
-        self.scroll_area = QScrollArea(self)
-        self.scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
+            self.scroll_area = QScrollArea(self)
+            self.scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
 
         self.setup_predictions_text()
 
     def setup_image_prediction(self):
-        self.progress_bar = ProgressBarWithTimeLabel(self)
-        self.layout.addWidget(self.progress_bar)
+        self.bottom_flag = False
+        if not self.progress_bar and not self.bottom_layout:
+            self.progress_bar = ProgressBarWithTimeLabel(self)
+            self.layout.addWidget(self.progress_bar)
+            self.bottom_layout = QHBoxLayout()
+            self.layout.addLayout(self.bottom_layout, stretch=1)
 
-        self.bottom_layout = QHBoxLayout()
-        self.layout.addLayout(self.bottom_layout, stretch=1)
-
-        self.scroll_area = QScrollArea(self)
-        self.scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
-        self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
+            self.scroll_area = QScrollArea(self)
+            self.scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
+            self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
 
         # self.setup_predictions_text()
 
@@ -175,24 +179,28 @@ class VideoPlayerApp(QWidget):
 
             # Check if it's an image by looking at file extension
             if file_path.endswith((".jpg", ".png")):
-                # load_model(file_path)
-                pass
+                image = cv2.imread(file_path)
+                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+                self.cap = image_rgb
+                load_model(file_path)
 
-            if not self.bottom_flag:  # If it's a video, proceed to set up predictions
-                if file_path.endswith((".jpg", ".png")):
-                    self.setup_image_prediction()
-                else:
-                    self.setup_video_prediction()
-                    self.faceswap_bar.past_predictions = [0]
-                    self.deepfake_bar.past_predictions = [0]
-                    self.neuraltextures_bar.past_predictions = [0]
-                    self.face2face_bar.past_predictions = [0]
-                    self.faceshift_bar.past_predictions = [0]
+            if file_path.endswith((".jpg", ".png")):
+                self.setup_image_prediction()
+                self.image = True
+                self.playing = False
+            else:
+                self.setup_video_prediction()
+                self.image = False
+                self.faceswap_bar.past_predictions = [0]
+                self.deepfake_bar.past_predictions = [0]
+                self.neuraltextures_bar.past_predictions = [0]
+                self.face2face_bar.past_predictions = [0]
+                self.faceshift_bar.past_predictions = [0]
 
-            self.current_frame = 0
-            # Get video dimensions
-            self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-            self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                self.current_frame = 0
+                # Get video dimensions
+                self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             # Show the play button and reset the state
             self.playing = False
             self.play_button.show()
@@ -249,7 +257,7 @@ class VideoPlayerApp(QWidget):
     def timerEvent(self):
         self.selected_models = self.model_dropdown.returnSelectedItems()
         # Read a frame from the video
-        if self.playing:
+        if self.playing and not self.image:
             self.current_frame += 1
             ret, frame = self.cap.read()
             if ret:
@@ -300,6 +308,21 @@ class VideoPlayerApp(QWidget):
                 self.play_button.setText("Play")
                 self.load_button.show()
                 self.timer.stop()
+        # frame logic
+        elif self.image:
+            frame = self.cap  # Calculate scaling factors
+            height_scale = self.video_label.height() / frame.shape[0]
+            width_scale = self.video_label.width() / frame.shape[1]
+            scale = min(height_scale, width_scale)
+            # Resize the frame to fit the window
+            frame_resized = cv2.resize(frame, None, fx=scale, fy=scale)
+            # Convert the OpenCV image to a QImage
+            q_img = self.opencv_to_qimage(frame_resized)
+            # Display the QImage in the QLabel
+            pixmap = QPixmap.fromImage(q_img)
+            self.video_label.setPixmap(pixmap)
+            self.video_label.setAlignment(Qt.AlignCenter)
+            # self.progress_bar.update_time_label(self.current_frame)
 
     def opencv_to_qimage(self, frame):
         # Convert the OpenCV image to a QImage

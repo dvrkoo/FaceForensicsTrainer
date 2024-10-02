@@ -35,10 +35,10 @@ def load_model(input):
 
     parser = argparse.ArgumentParser(description="Test TruFor")
     parser.add_argument(
-        "-gpu", "--gpu", type=int, default=0, help="device, use -1 for cpu"
+        "-gpu", "--gpu", type=int, default=-1, help="device, use -1 for cpu"
     )
     parser.add_argument(
-        "-out", "--output", type=str, default="../output", help="output folder"
+        "-out", "--output", type=str, default="./Trufor/output", help="output folder"
     )
     parser.add_argument(
         "-save_np",
@@ -103,76 +103,76 @@ def load_model(input):
     model.load_state_dict(checkpoint["state_dict"])
     model = model.to(device)
 
+    with torch.no_grad():
+        for index, (rgb, path) in enumerate(tqdm(testloader)):
+            # filename_img = test_dataset.get_filename(index)
 
-#
-# with torch.no_grad():
-#     for index, (rgb, path) in enumerate(tqdm(testloader)):
-#         # filename_img = test_dataset.get_filename(index)
-#
-#         if os.path.splitext(os.path.basename(output))[1] == '':  # output is a directory
-#             # filename_out = os.path.join(output, os.path.basename(filename_img) + '.npz')
-#             path = path[0]
-#             root = input.split('*')[0]
-#
-#             if os.path.isfile(input):
-#                 sub_path = path.replace(os.path.dirname(root), '').strip()
-#             else:
-#                 sub_path = path.replace(root, '').strip()
-#
-#             if sub_path.startswith('/'):
-#                 sub_path = sub_path[1:]
-#
-#             filename_out = os.path.join(output, sub_path) + '.npz'
-#         else:  # output is a filename
-#             filename_out = output
-#
-#         if not filename_out.endswith('.npz'):
-#             filename_out = filename_out + '.npz'
-#
-#         # by default it does not overwrite
-#         if not (os.path.isfile(filename_out)):
-#             try:
-#                 rgb = rgb.to(device)
-#                 model.eval()
-#
-#                 det = None
-#                 conf = None
-#
-#                 pred, conf, det, npp = model(rgb)
-#
-#                 if conf is not None:
-#                     conf = torch.squeeze(conf, 0)
-#                     conf = torch.sigmoid(conf)[0]
-#                     conf = conf.cpu().numpy()
-#
-#                 if npp is not None:
-#                     npp = torch.squeeze(npp, 0)[0]
-#                     npp = npp.cpu().numpy()
-#
-#                 if det is not None:
-#                     det_sig = torch.sigmoid(det).item()
-#
-#                 pred = torch.squeeze(pred, 0)
-#                 pred = F.softmax(pred, dim=0)[1]
-#                 pred = pred.cpu().numpy()
-#
-#                 out_dict = dict()
-#                 out_dict['map'] = pred
-#                 out_dict['imgsize'] = tuple(rgb.shape[2:])
-#                 if det is not None:
-#                     out_dict['score'] = det_sig
-#                 if conf is not None:
-#                     out_dict['conf'] = conf
-#                 if save_np:
-#                     out_dict['np++'] = npp
-#
-#                 from os import makedirs
-#
-#                 makedirs(os.path.dirname(filename_out), exist_ok=True)
-#                 np.savez(filename_out, **out_dict)
-#             except:
-#                 import traceback
-#
-#                 traceback.print_exc()
-#                 pass
-#
+            if (
+                os.path.splitext(os.path.basename(output))[1] == ""
+            ):  # output is a directory
+                # filename_out = os.path.join(output, os.path.basename(filename_img) + '.npz')
+                path = path[0]
+                root = input.split("*")[0]
+
+                if os.path.isfile(input):
+                    sub_path = path.replace(os.path.dirname(root), "").strip()
+                else:
+                    sub_path = path.replace(root, "").strip()
+
+                if sub_path.startswith("/"):
+                    sub_path = sub_path[1:]
+
+                filename_out = os.path.join(output, sub_path) + ".npz"
+            else:  # output is a filename
+                filename_out = output
+
+            if not filename_out.endswith(".npz"):
+                filename_out = filename_out + ".npz"
+
+            # by default it does not overwrite
+            if not (os.path.isfile(filename_out)):
+                try:
+                    rgb = rgb.to(device)
+                    model.eval()
+
+                    det = None
+                    conf = None
+
+                    pred, conf, det, npp = model(rgb)
+
+                    if conf is not None:
+                        conf = torch.squeeze(conf, 0)
+                        conf = torch.sigmoid(conf)[0]
+                        conf = conf.cpu().numpy()
+
+                    if npp is not None:
+                        npp = torch.squeeze(npp, 0)[0]
+                        npp = npp.cpu().numpy()
+
+                    if det is not None:
+                        det_sig = torch.sigmoid(det).item()
+
+                    pred = torch.squeeze(pred, 0)
+                    pred = F.softmax(pred, dim=0)[1]
+                    pred = pred.cpu().numpy()
+
+                    out_dict = dict()
+                    out_dict["map"] = pred
+                    out_dict["imgsize"] = tuple(rgb.shape[2:])
+                    if det is not None:
+                        out_dict["score"] = det_sig
+                    if conf is not None:
+                        out_dict["conf"] = conf
+                    if save_np:
+                        out_dict["np++"] = npp
+
+                    from os import makedirs
+
+                    makedirs(os.path.dirname(filename_out), exist_ok=True)
+                    np.savez(filename_out, **out_dict)
+                    print(filename_out)
+                except:
+                    import traceback
+
+                    traceback.print_exc()
+                    pass
