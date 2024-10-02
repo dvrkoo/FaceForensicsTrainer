@@ -55,11 +55,11 @@ class VideoPlayerApp(QWidget):
 
     def setup_ui(self):
         # Set up layout
-        layout = QVBoxLayout(self)
+        self.layout = QVBoxLayout(self)
         video_layout = QHBoxLayout()
         video_layout.setSpacing(0)
         video_layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(video_layout, stretch=1)
+        self.layout.addLayout(video_layout, stretch=1)
         buttons_layout = QVBoxLayout()
         video_layout.addLayout(buttons_layout)
         self.model_dropdown = CheckableComboBox()
@@ -77,20 +77,24 @@ class VideoPlayerApp(QWidget):
         self.play_button.hide()
         buttons_layout.addWidget(self.play_button)
         # Add a button to open a file dialog
-        self.load_button = QPushButton("Load Video", self)
+        self.load_button = QPushButton("Load Video/Image", self)
         self.load_button.clicked.connect(self.load_video)
         buttons_layout.addWidget(self.load_button)
+        # Create a QScrollArea
+        # Add the scroll area to your layout
+        # self.setup_video_prediction()
+
+    def setup_video_prediction(self):
         self.progress_bar = ProgressBarWithTimeLabel(self)
-        layout.addWidget(self.progress_bar)
+        self.layout.addWidget(self.progress_bar)
 
         self.bottom_layout = QHBoxLayout()
-        layout.addLayout(self.bottom_layout, stretch=1)
-        # Create a QScrollArea
+        self.layout.addLayout(self.bottom_layout, stretch=1)
+
         self.scroll_area = QScrollArea(self)
         self.scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
         self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
 
-        # Add the scroll area to your layout
         self.setup_predictions_text()
 
     def setup_predictions_text(self):
@@ -128,23 +132,28 @@ class VideoPlayerApp(QWidget):
         self.scroll_area.setWidget(self.predictions_widget)
 
     def update_predictions_texts(self, predictions):
-        self.faceswap.setText(f"Faceswap : {predictions[0][0]:.4f}")
-        self.deepfake.setText(f"Deepfake : {predictions[1][0]:.4f}")
-        self.neuraltextures.setText(f"Neuraltextures : {predictions[2][0]:.4f}")
-        self.face2face.setText(f"Face2Face : {predictions[3][0]:.4f}")
-        self.faceshift.setText(f"Faceshifter : {predictions[4][0]:.4f}")
+        self.faceswap.setText(f"Faceswap : {predictions[0][0]:.4f}% Fake")
+        self.deepfake.setText(f"Deepfake : {predictions[1][0]:.4f}% Fake")
+        self.neuraltextures.setText(f"Neuraltextures : {predictions[2][0]:.4f}% Fake")
+        self.face2face.setText(f"Face2Face : {predictions[3][0]:.4f}% Fake")
+        self.faceshift.setText(f"Faceshifter : {predictions[4][0]:.4f}% Fake")
 
     def load_video(self):
         # Open a file dialog to choose a video file
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(
-            self, "Open Video File", "", "Video Files (*.mp4 *.avi)"
+            self, "Open Video File", "", "Video Files (*.mp4 *.avi *.jpg *png)"
         )
 
         if file_path:
             # If a file is selected, initialize video capture
             self.cap = cv2.VideoCapture(file_path)
             self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+            if self.total_frames == 1:
+                pass
+            else:
+                self.setup_video_prediction()
+            # if len == 1 TruFor
             self.current_frame = 0
             self.faceswap_bar.past_predictions = [0]
             self.deepfake_bar.past_predictions = [0]
