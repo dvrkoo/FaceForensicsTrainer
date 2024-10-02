@@ -55,6 +55,7 @@ class VideoPlayerApp(QWidget):
 
     def setup_ui(self):
         # Set up layout
+        self.bottom_flag = False
         self.layout = QVBoxLayout(self)
         video_layout = QHBoxLayout()
         video_layout.setSpacing(0)
@@ -98,6 +99,7 @@ class VideoPlayerApp(QWidget):
         self.setup_predictions_text()
 
     def setup_predictions_text(self):
+        self.bottom_flag = True
         self.text_widget = QGridLayout()
         self.faceswap = QLabel("Faceswap : ")
         self.faceswap.setFixedWidth(150)
@@ -151,7 +153,7 @@ class VideoPlayerApp(QWidget):
             self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
             if self.total_frames == 1:
                 pass
-            else:
+            elif not self.bottom_flag:
                 self.setup_video_prediction()
             # if len == 1 TruFor
             self.current_frame = 0
