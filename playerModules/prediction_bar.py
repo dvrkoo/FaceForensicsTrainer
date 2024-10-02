@@ -47,7 +47,11 @@ class PredictionsBarGraph(QWidget):
         for j in range(len(self.past_predictions)):
             bar_x = int(j * (bar_width + 3) + 5)
             bar_width = 3
-            bar_height = -(self.past_predictions[j] * self.height() * 0.5)
+            if self.past_predictions[j] < 0.5:
+                inverted = 1 - self.past_predictions[j]
+                bar_height = -inverted * self.height() * 0.5
+            else:
+                bar_height = -(self.past_predictions[j] * self.height() * 0.5)
             bar_width = int(bar_width)  # Convert to int
             bar_height = int(bar_height)  # Convert to int
             painter.fillRect(
@@ -55,9 +59,11 @@ class PredictionsBarGraph(QWidget):
                 int(self.height() * 0.6),
                 bar_width,
                 bar_height,
-                QColor(255, 0, 0)
-                if self.past_predictions[j] >= 0.5
-                else QColor(0, 255, 0),
+                (
+                    QColor(255, 0, 0)
+                    if self.past_predictions[j] >= 0.5
+                    else QColor(0, 255, 0)
+                ),
             )
 
     def draw_placeholder_text(self, painter):

@@ -7,7 +7,7 @@ import sys
 from PIL import Image
 import numpy as np
 
-from dataset.transform import xception_default_data_transforms
+from dataset.transform import xception_default_data_transforms, resnet_transform
 from network.models import model_selection
 
 
@@ -35,10 +35,11 @@ model_names = [
 def load_models():
     models = []
     for model_name in model_names:
-        model, *_ = model_selection(modelname="xception", num_out_classes=2)
+        model, *_ = model_selection(modelname="resnet50", num_out_classes=2)
         print(f"Loading {model_name} Model")
         checkpoint = torch.load(
-            get_resource_path(f"./trained_models/{model_name}.pt"), map_location="cpu"
+            get_resource_path(f"./trained_models/resnet_{model_name}.pt"),
+            map_location="cpu",
         )
         model.load_state_dict(checkpoint["model_state_dict"])
         model = model.to(device)
@@ -87,7 +88,8 @@ def detect_faces(frame, detector):
 
 def preprocess_input(face_roi):
     image = cv2.cvtColor(face_roi, cv2.COLOR_BGR2RGB)
-    preprocess = xception_default_data_transforms["test"]
+    # preprocess = xception_default_data_transforms["test"]
+    preprocess = resnet_transform
     preprocessed_image = preprocess(Image.fromarray(image))
     preprocessed_image = preprocessed_image.unsqueeze(0)
     preprocessed_image = preprocessed_image.to(device)
