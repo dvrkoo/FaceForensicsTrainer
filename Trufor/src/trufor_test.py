@@ -105,8 +105,8 @@ def load_model(input):
 
     with torch.no_grad():
         for index, (rgb, path) in enumerate(tqdm(testloader)):
-            # filename_img = test_dataset.get_filename(index)
 
+            # filename_img = test_dataset.get_filename(index)
             if (
                 os.path.splitext(os.path.basename(output))[1] == ""
             ):  # output is a directory

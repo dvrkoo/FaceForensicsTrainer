@@ -26,6 +26,7 @@ from playerModules.models_dropdown import CheckableComboBox
 from playerModules.progress_bar import ProgressBarWithTimeLabel
 from playerModules.timer import VideoTimer
 from Trufor.src.trufor_test import load_model
+from Trufor.visualize import ProcessedImageWidget
 
 models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
 
@@ -59,10 +60,19 @@ class VideoPlayerApp(QWidget):
         selected_model = models_index[index - 1] if index > 0 else None
         self.selected_model = selected_model  # Store the selected model in the class
 
+    # Usage example:
+
+    # In your PyQt application, you would call this function where image_np is the loaded image.
     def setup_ui(self):
         # Set up layout
+        self.faceswap = None
+        self.processed_widget = None
+        self.loading_label = QLabel("Loading Image...", self)
+        self.loading_label.setAlignment(Qt.AlignCenter)
+        self.loading_label.hide()  # Initially hidden
         self.bottom_flag = False
         self.layout = QVBoxLayout(self)
+        self.layout.addWidget(self.loading_label)
         video_layout = QHBoxLayout()
         video_layout.setSpacing(0)
         video_layout.setContentsMargins(0, 0, 0, 0)
@@ -87,8 +97,6 @@ class VideoPlayerApp(QWidget):
         self.load_button = QPushButton("Load Video/Image", self)
         self.load_button.clicked.connect(self.load_video)
         buttons_layout.addWidget(self.load_button)
-        # Create a QScrollArea
-        # Add the scroll area to your layout
         # self.setup_video_prediction()
 
     def setup_video_prediction(self):
@@ -96,8 +104,10 @@ class VideoPlayerApp(QWidget):
             self.progress_bar = ProgressBarWithTimeLabel(self)
             self.layout.addWidget(self.progress_bar)
 
-            self.bottom_layout = QHBoxLayout()
-            self.layout.addLayout(self.bottom_layout, stretch=1)
+            self.bottom_widget = QWidget()
+            self.bottom_layout = QHBoxLayout(self.bottom_widget)
+            # self.layout.addLayout(self.bottom_layout, stretch=1)
+            self.layout.addWidget(self.bottom_widget, stretch=1)
 
             self.scroll_area = QScrollArea(self)
             self.scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
@@ -117,26 +127,25 @@ class VideoPlayerApp(QWidget):
             self.scroll_area.setWidgetResizable(True)  # Allow prediction_bar to expand
             self.scroll_area.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOn)  # Add
 
-        # self.setup_predictions_text()
-
     def setup_predictions_text(self):
-        self.bottom_flag = True
-        self.text_widget = QGridLayout()
-        self.faceswap = QLabel("Faceswap : ")
-        self.faceswap.setFixedWidth(150)
-        self.text_widget.addWidget(self.faceswap, 0, 0, 1, 1)
-        self.deepfake = QLabel("Deepfake : ")
-        self.text_widget.addWidget(self.deepfake, 1, 0, 1, 1)
-        self.neuraltextures = QLabel("Neuraltextures : ")
-        self.text_widget.addWidget(self.neuraltextures, 2, 0, 1, 1)
-        self.face2face = QLabel("Face2Face : ")
-        self.text_widget.addWidget(self.face2face, 3, 0, 1, 1)
-        self.faceshift = QLabel("Faceshifter : ")
-        self.text_widget.addWidget(self.faceshift, 4, 0, 1, 1)
-        self.credits = QPushButton("Credits")
-        self.text_widget.addWidget(self.credits, 5, 0, 1, 1)
-        self.bottom_layout.addLayout(self.text_widget)
-        self.bottom_layout.addWidget(self.scroll_area)
+        if not self.faceswap:
+            self.bottom_flag = True
+            self.text_widget = QGridLayout()
+            self.faceswap = QLabel("Faceswap : ")
+            self.faceswap.setFixedWidth(150)
+            self.text_widget.addWidget(self.faceswap, 0, 0, 1, 1)
+            self.deepfake = QLabel("Deepfake : ")
+            self.text_widget.addWidget(self.deepfake, 1, 0, 1, 1)
+            self.neuraltextures = QLabel("Neuraltextures : ")
+            self.text_widget.addWidget(self.neuraltextures, 2, 0, 1, 1)
+            self.face2face = QLabel("Face2Face : ")
+            self.text_widget.addWidget(self.face2face, 3, 0, 1, 1)
+            self.faceshift = QLabel("Faceshifter : ")
+            self.text_widget.addWidget(self.faceshift, 4, 0, 1, 1)
+            self.credits = QPushButton("Credits")
+            self.text_widget.addWidget(self.credits, 5, 0, 1, 1)
+            self.bottom_layout.addLayout(self.text_widget)
+            self.bottom_layout.addWidget(self.scroll_area)
         self.setup_predictions_bars()
 
     def setup_predictions_bars(self):
@@ -161,6 +170,14 @@ class VideoPlayerApp(QWidget):
         self.face2face.setText(f"Face2Face : {predictions[3][0]:.4f}% Fake")
         self.faceshift.setText(f"Faceshifter : {predictions[4][0]:.4f}% Fake")
 
+    def clear_layout(self, layout):
+        """Utility function to clear all widgets from a layout."""
+        while layout.count():
+            item = layout.takeAt(0)  # Get the first item
+            if item.widget():  # If it's a widget
+                item.widget().deleteLater()  # Schedule for deletion
+            del item  # Remove reference to item
+
     def load_video(self):
         # Open a file dialog to choose a video or image file
         file_dialog = QFileDialog()
@@ -170,7 +187,6 @@ class VideoPlayerApp(QWidget):
             "",
             "Video Files (*.mp4 *.avi *.jpg *.png)",
         )
-
         if file_path:
             # If a file is selected, initialize video capture
             self.cap = cv2.VideoCapture(file_path)
@@ -179,29 +195,36 @@ class VideoPlayerApp(QWidget):
 
             # Check if it's an image by looking at file extension
             if file_path.endswith((".jpg", ".png")):
+                if self.progress_bar and self.bottom_layout:
+                    self.progress_bar.hide()
+                    self.bottom_widget.hide()
+
+                if self.processed_widget:
+                    self.layout.removeWidget(self.processed_widget)
+                    self.processed_widget.deleteLater()  # Safely delete the old widget
+
                 image = cv2.imread(file_path)
+                print(file_path)
                 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 self.cap = image_rgb
-                load_model(file_path)
-
-            if file_path.endswith((".jpg", ".png")):
-                self.setup_image_prediction()
                 self.image = True
-                self.playing = False
+                # self.setup_image_prediction()
+                self.loading_label.show()
+                load_model(file_path)
+                self.loading_label.hide()
+                self.processed_widget = ProcessedImageWidget(file_path)
+                self.layout.addWidget(self.processed_widget)
             else:
+                if self.processed_widget:
+                    self.processed_widget.hide()
                 self.setup_video_prediction()
+                self.progress_bar.show()
+                self.bottom_widget.show()
                 self.image = False
-                self.faceswap_bar.past_predictions = [0]
-                self.deepfake_bar.past_predictions = [0]
-                self.neuraltextures_bar.past_predictions = [0]
-                self.face2face_bar.past_predictions = [0]
-                self.faceshift_bar.past_predictions = [0]
-
-                self.current_frame = 0
-                # Get video dimensions
-                self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                # self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+                # self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             # Show the play button and reset the state
+            self.current_frame = 0
             self.playing = False
             self.play_button.show()
             self.play_button.setText("Play")
@@ -209,7 +232,7 @@ class VideoPlayerApp(QWidget):
             if hasattr(self, "timer"):
                 self.timer.start(33)  # ~30 fps for video
             self.load_button.hide()
-            if self.bottom_flag:
+            if self.bottom_flag and not self.image:
                 self.progress_bar.set_frame_number(self.total_frames)
 
     def display_frame(self, frame):
