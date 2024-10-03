@@ -1,11 +1,8 @@
 import sys
-
+import os
 import cv2
 import torch
-from PyQt5.QtGui import (
-    QImage,
-    QPixmap,
-)
+from PyQt5.QtGui import QImage, QPixmap, QFont
 from PyQt5.QtCore import Qt
 from PyQt5.QtWidgets import (
     QApplication,
@@ -31,6 +28,20 @@ from Trufor.visualize import ProcessedImageWidget
 models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
 
 
+class LogoPlaceholderWidget(QWidget):
+    def __init__(self, logo_paths, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+
+        for logo_path in logo_paths:
+            label = QLabel(self)
+            pixmap = QPixmap(logo_path)
+            label.setPixmap(pixmap)
+            # label.setScaledContents(True)  # Scale the pixmap to fit the label
+            label.setAlignment(Qt.AlignCenter)
+            self.layout.addWidget(label)
+
+
 class VideoPlayerApp(QWidget):
     def __init__(self):
         super().__init__()
@@ -51,18 +62,36 @@ class VideoPlayerApp(QWidget):
         self.is_fake = False
         self.progress_bar = None
         self.bottom_layout = None
+        self.setup_home()
 
-    def setup_trufor():
-        pass
+    def setup_home(self):
+        self.instructions_label = QLabel(self)
+        self.instructions_label.setText(
+            "Welcome to the DeepFake Detection Application!\n\n"
+            "This application analyzes images and videos to determine whether they are real or manipulated. "
+            "To get started, please load a video or image file using the 'Load Video' button. "
+            "If you load an Image will see the results along with confidence maps indicating the likelihood of manipulation."
+            "If you load a video, you will see the video playing along with the real-time predictions of 5 particular forgeries."
+        )
+        self.instructions_label.setAlignment(Qt.AlignCenter)  # Center the text
+        self.instructions_label.setWordWrap(True)  # Allow text to wrap
+        self.instructions_label.setFont(QFont("Arial", 12))  # Set font and size
+        self.instructions_label.setStyleSheet(
+            "padding: 10px; color: #333;"
+        )  # Add padding and color
+        logo_paths = [
+            "./img/micc_logo-1-754x380.png",
+            "./img/Logo_Blu_Trasparente-sc.png",
+        ]
+        self.logo_widget = LogoPlaceholderWidget(logo_paths)
+        self.layout.addWidget(self.instructions_label)
+        self.layout.addWidget(self.logo_widget)
 
     def model_selection_changed(self, index):
         # Slot to be triggered when the selected model changes
         selected_model = models_index[index - 1] if index > 0 else None
         self.selected_model = selected_model  # Store the selected model in the class
 
-    # Usage example:
-
-    # In your PyQt application, you would call this function where image_np is the loaded image.
     def setup_ui(self):
         # Set up layout
         self.faceswap = None
@@ -170,15 +199,17 @@ class VideoPlayerApp(QWidget):
         self.face2face.setText(f"Face2Face : {predictions[3][0]:.4f}% Fake")
         self.faceshift.setText(f"Faceshifter : {predictions[4][0]:.4f}% Fake")
 
-    def clear_layout(self, layout):
-        """Utility function to clear all widgets from a layout."""
-        while layout.count():
-            item = layout.takeAt(0)  # Get the first item
-            if item.widget():  # If it's a widget
-                item.widget().deleteLater()  # Schedule for deletion
-            del item  # Remove reference to item
+    def clear_logo_widget(self):
+        """Remove the logo widget if it exists in the layout."""
+        if hasattr(self, "logo_widget"):
+            self.layout.removeWidget(self.logo_widget)
+            self.layout.removeWidget(self.instructions_label)
+            self.instructions_label.deleteLater()  # Optional: deletes the widget
+            self.logo_widget.deleteLater()  # Optional: deletes the widget
+            del self.logo_widget  # Remove the reference to avoid future error
 
     def load_video(self):
+        self.clear_logo_widget()
         # Open a file dialog to choose a video or image file
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(
