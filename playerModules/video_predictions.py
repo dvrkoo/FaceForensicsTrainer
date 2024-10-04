@@ -132,3 +132,10 @@ class VideoPredictionWidget(QWidget):
             predictions[4], models_index, selected_models
         )
         self.update_predictions_texts(predictions)
+
+    def reset_past_predictions(self):
+        self.faceswap_bar.past_predictions = [0]
+        self.deepfake_bar.past_predictions = [0]
+        self.neuraltextures_bar.past_predictions = [0]
+        self.face2face_bar.past_predictions = [0]
+        self.faceshift_bar.past_predictions = [0]

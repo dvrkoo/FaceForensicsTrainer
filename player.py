@@ -42,12 +42,11 @@ class VideoPlayerApp(QWidget):
         self.is_fake = False
         self.home_widget = HomeScreenWidget(self)
         self.layout.addWidget(self.home_widget)
+        self.video_prediction_widget = None
 
     def setup_ui(self):
         # Set up layout
-        self.faceswap = None
-        self.processed_widget = None
-        self.bottom_flag = False
+        self.processed_image_widget = None
         self.layout = QVBoxLayout(self)
         self.video_widget = VideoWidget(self)
         self.video_widget.hide()
@@ -103,55 +102,49 @@ class VideoPlayerApp(QWidget):
             # Check if it's an image by looking at file extension
             if file_path.endswith((".jpg", ".png")):
 
-                if self.processed_widget:
-                    self.layout.removeWidget(self.processed_widget)
-                    self.processed_widget.deleteLater()  # Safely delete the old widget
+                if self.processed_image_widget:
+                    self.layout.removeWidget(self.processed_image_widget)
+                    self.processed_image_widget.deleteLater()  # Safely delete the old widget
 
                 image = cv2.imread(file_path)
                 image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
                 self.cap = image_rgb
                 self.image = True
                 # self.setup_image_prediction()
-                self.video_prediction_widget.hide()
+                if self.video_prediction_widget:
+                    self.video_prediction_widget.hide()
                 load_model(file_path)
-                self.processed_widget = ProcessedImageWidget(file_path)
-                self.layout.addWidget(self.processed_widget)
+                self.processed_image_widget = ProcessedImageWidget(file_path)
+                self.layout.addWidget(self.processed_image_widget)
             else:
-                self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-                if self.processed_widget:
-                    self.processed_widget.hide()
-                self.setup_video_prediction()
-                self.video_prediction_widget.show()
                 self.image = False
+                if self.processed_image_widget:
+                    self.processed_image_widget.hide()
+                if not self.video_prediction_widget:
+                    self.setup_video_prediction()
+                else:
+                    self.video_prediction_widget.reset_past_predictions()
+                self.video_prediction_widget.show()
+                self.current_frame = 0
+                ret, frame = self.cap.read()
+                self.video_prediction_widget.progress_bar.set_frame_number(
+                    self.total_frames
+                )
+                if ret:
+                    self.display_frame(
+                        cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                    )  # Show the first frame
+                else:
+                    self.playing = False
                 # self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
                 # self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             # Show the play button and reset the state
-            self.current_frame = 0
             self.playing = False
             self.video_widget.play_button.show()
             self.video_widget.play_button.setText("Play")
             # Start the video timer
             if hasattr(self, "timer"):
                 self.timer.start(33)  # ~30 fps for video
-            if not self.image:
-                self.video_prediction_widget.progress_bar.set_frame_number(
-                    self.total_frames
-                )
-
-    def display_frame(self, frame):
-        """Helper function to display an image or video frame in the QLabel."""
-        # Calculate scaling factors
-        height_scale = self.video_widget.video_label.height() / frame.shape[0]
-        width_scale = self.video_widget.video_label.width() / frame.shape[1]
-        scale = min(height_scale, width_scale)
-        # Resize the frame to fit the window
-        frame_resized = cv2.resize(frame, None, fx=scale, fy=scale)
-        # Convert the OpenCV image to a QImage
-        q_img = self.opencv_to_qimage(frame_resized)
-        # Display the QImage in the QLabel
-        pixmap = QPixmap.fromImage(q_img)
-        self.video_widget.video_label.setPixmap(pixmap)
-        self.video_widget.video_label.setAlignment(Qt.AlignCenter)
 
     def play_pause_video(self):
         # Toggle between playing and pausing the video
@@ -198,23 +191,7 @@ class VideoPlayerApp(QWidget):
 
                     self.update_label(face_1, predictions, frame)
                     self.update_predictions(predictions)
-                    # self.update_predictions_texts(predictions)
-                # Calculate scaling factors
-                height_scale = self.video_widget.video_label.height() / frame.shape[0]
-                width_scale = self.video_widget.video_label.width() / frame.shape[1]
-                scale = min(height_scale, width_scale)
-                # Resize the frame to fit the window
-                frame_resized = cv2.resize(frame, None, fx=scale, fy=scale)
-                # Convert the OpenCV image to a QImage
-                q_img = self.opencv_to_qimage(frame_resized)
-                # Display the QImage in the QLabel
-                pixmap = QPixmap.fromImage(q_img)
-                self.video_widget.video_label.setPixmap(pixmap)
-                self.video_widget.video_label.setAlignment(Qt.AlignCenter)
-                self.video_prediction_widget.progress_bar.update_time_label(
-                    self.current_frame
-                )
-
+                self.display_frame(frame)
             else:
                 self.playing = False
                 self.video_widget.play_button.setText("Play")
@@ -223,20 +200,30 @@ class VideoPlayerApp(QWidget):
         # frame logic
         elif self.image:
             frame = self.cap  # Calculate scaling factors
-            height_scale = self.video_widget.video_label.height() / frame.shape[0]
-            width_scale = self.video_widget.video_label.width() / frame.shape[1]
-            scale = min(height_scale, width_scale)
-            # Resize the frame to fit the window
-            frame_resized = cv2.resize(frame, None, fx=scale, fy=scale)
-            # Convert the OpenCV image to a QImage
-            q_img = self.opencv_to_qimage(frame_resized)
-            # Display the QImage in the QLabel
-            pixmap = QPixmap.fromImage(q_img)
-            self.video_widget.video_label.setPixmap(pixmap)
-            self.video_widget.video_label.setAlignment(Qt.AlignCenter)
-            # self.video_prediction_widget.progress_bar.update_time_label(
-            # self.current_frame
-            # )
+            self.display_frame(frame)
+
+    def display_frame(self, frame):
+        # Calculate scaling factors
+        height_scale = self.video_widget.video_label.height() / frame.shape[0]
+        width_scale = self.video_widget.video_label.width() / frame.shape[1]
+        scale = min(height_scale, width_scale)
+
+        # Resize the frame to fit the window
+        frame_resized = cv2.resize(frame, None, fx=scale, fy=scale)
+
+        # Convert the OpenCV image to a QImage
+        q_img = self.opencv_to_qimage(frame_resized)
+
+        # Display the QImage in the QLabel
+        pixmap = QPixmap.fromImage(q_img)
+        self.video_widget.video_label.setPixmap(pixmap)
+        self.video_widget.video_label.setAlignment(Qt.AlignCenter)
+
+        # Update the progress bar if it's a video
+        if not self.image:
+            self.video_prediction_widget.progress_bar.update_time_label(
+                self.current_frame
+            )
 
     def opencv_to_qimage(self, frame):
         # Convert the OpenCV image to a QImage
