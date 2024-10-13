@@ -81,6 +81,33 @@ class VideoPlayerApp(QWidget):
             self.home_widget.deleteLater()
             del self.home_widget  # Optional: delete reference to avoid future errors
 
+    def load_image(self, file_path):
+        if self.processed_image_widget:
+            self.layout.removeWidget(self.processed_image_widget)
+            self.processed_image_widget.deleteLater()  # Safely delete the old widget
+
+        # Load the image
+        image = cv2.imread(file_path)
+        image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
+        # Set the image flag and store the image
+        self.cap = image_rgb
+        self.image = True
+
+        # Hide the video prediction widget if it's an image
+        if self.video_prediction_widget:
+            self.video_prediction_widget.hide()
+
+        # Load the model associated with the image
+        load_model(file_path)
+
+        # Display the processed image in the appropriate widget
+        self.processed_image_widget = ProcessedImageWidget(file_path)
+        self.layout.addWidget(self.processed_image_widget)
+
+        # Show the first frame (image)
+        self.display_frame(image_rgb)
+
     def load_video(self):
         # Open a file dialog to choose a video or image file
         file_dialog = QFileDialog()

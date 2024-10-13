@@ -65,7 +65,7 @@ class VideoPredictionWidget(QWidget):
 
             # Create labels for prediction categories
             self.faceswap = QLabel("Faceswap : ")
-            self.faceswap.setFixedWidth(150)
+            self.faceswap.setFixedWidth(200)
             self.text_widget.addWidget(self.faceswap, 0, 0, 1, 1)
 
             self.deepfake = QLabel("Deepfake : ")
@@ -113,11 +113,13 @@ class VideoPredictionWidget(QWidget):
 
     def update_predictions_texts(self, predictions):
         """Updates the prediction texts based on new data."""
-        self.faceswap.setText(f"Faceswap : {predictions[0][0]:.4f}% Fake")
-        self.deepfake.setText(f"Deepfake : {predictions[1][0]:.4f}% Fake")
-        self.neuraltextures.setText(f"Neuraltextures : {predictions[2][0]:.4f}% Fake")
-        self.face2face.setText(f"Face2Face : {predictions[3][0]:.4f}% Fake")
-        self.faceshift.setText(f"Faceshifter : {predictions[4][0]:.4f}% Fake")
+        self.faceswap.setText(f"Faceswap : {predictions[0][0]*100:.4f}% Fake")
+        self.deepfake.setText(f"Deepfake : {predictions[1][0]*100:.4f}% Fake")
+        self.neuraltextures.setText(
+            f"Neuraltextures : {predictions[2][0]*100:.4f}% Fake"
+        )
+        self.face2face.setText(f"Face2Face : {predictions[3][0]*100:.4f}% Fake")
+        self.faceshift.setText(f"Faceshifter : {predictions[4][0]*100:.4f}% Fake")
 
     def update_predictions(self, predictions, selected_models):
         self.faceswap_bar.set_predictions(predictions[0], models_index, selected_models)

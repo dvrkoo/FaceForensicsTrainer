@@ -34,7 +34,7 @@ class HomeScreenWidget(QWidget):
         )
         self.instructions_label.setAlignment(Qt.AlignCenter)
         self.instructions_label.setWordWrap(True)
-        self.instructions_label.setFont(QFont("Arial", 12))
+        self.instructions_label.setFont(QFont("Arial", 16))
         self.instructions_label.setStyleSheet("padding: 10px; color: #333;")
 
         # Logo images and widget

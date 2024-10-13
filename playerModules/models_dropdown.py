@@ -10,7 +10,7 @@ class CheckableComboBox(QComboBox):
         super().__init__(*args, **kwargs)
         self.addItem("Select Models...")  # Placeholder text
         self.model().item(0).setEnabled(False)
-        self.setStyleSheet("QComboBox { color: white; }")
+        self.setStyleSheet("QComboBox { color: black; }")
         self.model().itemChanged.connect(
             self.handleItemChanged
         )  # Connect signal to slot
