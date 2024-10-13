@@ -12,6 +12,7 @@ from PyQt5.QtWidgets import (
 )
 
 
+from PyQt5.QtWidgets import QMessageBox
 from playerModules import model_functions
 from playerModules.timer import VideoTimer
 from Trufor.src.trufor_test import load_model
@@ -43,6 +44,7 @@ class VideoPlayerApp(QWidget):
         self.home_widget = HomeScreenWidget(self)
         self.layout.addWidget(self.home_widget)
         self.video_prediction_widget = None
+        self.detection_mode = "video"
 
     def setup_ui(self):
         # Set up layout
@@ -82,10 +84,11 @@ class VideoPlayerApp(QWidget):
             del self.home_widget  # Optional: delete reference to avoid future errors
 
     def load_image(self, file_path):
+        self.clear_logo_widget()
         if self.processed_image_widget:
             self.layout.removeWidget(self.processed_image_widget)
             self.processed_image_widget.deleteLater()  # Safely delete the old widget
-
+        self.video_widget.show()
         # Load the image
         image = cv2.imread(file_path)
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -108,70 +111,93 @@ class VideoPlayerApp(QWidget):
         # Show the first frame (image)
         self.display_frame(image_rgb)
 
-    def load_video(self):
+    def load_video(self, file_path):
+        self.clear_logo_widget()
+        self.video_widget.show()
+
+        # Initialize video capture
+        self.cap = cv2.VideoCapture(file_path)
+
+        # Get the total number of frames in the video
+        self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
+
+        # Set the flag to indicate it's not an image
+        self.image = False
+
+        # Hide any processed image widget
+        if self.processed_image_widget:
+            self.processed_image_widget.hide()
+
+        # Show the video prediction widget
+        if not self.video_prediction_widget:
+            self.setup_video_prediction()
+        else:
+            self.video_prediction_widget.reset_past_predictions()
+
+        self.video_prediction_widget.show()
+
+        self.video_prediction_widget.progress_bar.set_frame_number(self.total_frames)
+
+        # Start from the first frame
+        self.current_frame = 0
+
+        # Read and display the first frame
+        ret, frame = self.cap.read()
+        if ret:
+            self.display_frame(
+                cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            )  # Show the first frame
+        else:
+            self.playing = False
+
+        # Set the total frame count in the progress bar
+
+        # Show the play button and reset the state
+        self.playing = False
+        self.video_widget.play_button.show()
+        self.video_widget.play_button.setText("Play")
+
+        # Start the video timer (for playback)
+        if hasattr(self, "timer"):
+            self.timer.start(33)  # ~30 fps for video
+
+    def display_error(self, title, message):
+        # Create an error message box
+        error_box = QMessageBox()
+        error_box.setIcon(QMessageBox.Critical)
+        error_box.setWindowTitle(title)
+        error_box.setText(message)
+        error_box.setStandardButtons(QMessageBox.Ok)
+        error_box.exec_()  # Show the message box
+
+    def load_media(self):
+
+        print(self.detection_mode)
         # Open a file dialog to choose a video or image file
         file_dialog = QFileDialog()
         file_path, _ = file_dialog.getOpenFileName(
-            self,
-            "Open Video/Image File",
-            "",
-            "Video Files (*.mp4 *.avi *.jpg *.png)",
+            self, "Open Video/Image File", "", "Media Files (*.mp4 *.avi *.jpg *.png)"
         )
+
         if file_path:
-
-            self.clear_logo_widget()
-            self.video_widget.show()
-            # If a file is selected, initialize video capture
-            self.cap = cv2.VideoCapture(file_path)
-            # Get the total number of frames in the video (1 for an image)
-            self.total_frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT))
-
-            # Check if it's an image by looking at file extension
-            if file_path.endswith((".jpg", ".png")):
-
-                if self.processed_image_widget:
-                    self.layout.removeWidget(self.processed_image_widget)
-                    self.processed_image_widget.deleteLater()  # Safely delete the old widget
-
-                image = cv2.imread(file_path)
-                image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-                self.cap = image_rgb
-                self.image = True
-                # self.setup_image_prediction()
-                if self.video_prediction_widget:
-                    self.video_prediction_widget.hide()
-                load_model(file_path)
-                self.processed_image_widget = ProcessedImageWidget(file_path)
-                self.layout.addWidget(self.processed_image_widget)
-            else:
-                self.image = False
-                if self.processed_image_widget:
-                    self.processed_image_widget.hide()
-                if not self.video_prediction_widget:
-                    self.setup_video_prediction()
+            # If video mode is selected, always load as a video
+            if self.detection_mode == "video":
+                if file_path.endswith((".jpg", ".png")):
+                    self.display_error(
+                        "Invalid file type",
+                        "Please select a video file for video detection.",
+                    )
                 else:
-                    self.video_prediction_widget.reset_past_predictions()
-                self.video_prediction_widget.show()
-                self.current_frame = 0
-                ret, frame = self.cap.read()
-                self.video_prediction_widget.progress_bar.set_frame_number(
-                    self.total_frames
-                )
-                if ret:
-                    self.display_frame(
-                        cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-                    )  # Show the first frame
+                    self.load_video(file_path)
+            # If image mode is selected, load based on the file extension
+            elif self.detection_mode == "image":
+                if file_path.endswith((".jpg", ".png")):
+                    self.load_image(file_path)
                 else:
-                    self.playing = False
-                # self.video_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-                # self.video_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            # Show the play button and reset the state
-            self.playing = False
-            self.video_widget.play_button.show()
-            self.video_widget.play_button.setText("Play")
-            # Start the video timer
-            if hasattr(self, "timer"):
-                self.timer.start(33)  # ~30 fps for video
+                    self.display_error(
+                        "Invalid file type",
+                        "Please select an image file for image detection.",
+                    )
 
     def play_pause_video(self):
         # Toggle between playing and pausing the video

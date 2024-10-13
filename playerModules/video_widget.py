@@ -8,6 +8,7 @@ from PyQt5.QtWidgets import (
     QSizePolicy,
 )
 from .models_dropdown import CheckableComboBox
+import cv2
 
 models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
 
@@ -15,6 +16,7 @@ models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshif
 class VideoWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.player = parent
 
         self.setContentsMargins(0, 0, 0, 0)
         self.layout = QHBoxLayout(self)
@@ -44,5 +46,49 @@ class VideoWidget(QWidget):
 
         # Add a button to open a file dialog
         self.load_button = QPushButton("Load Video/Image", self)
-        self.load_button.clicked.connect(parent.load_video)
+        self.load_button.clicked.connect(parent.load_media)
         buttons_layout.addWidget(self.load_button)
+
+        # Add the toggle button for switching between detection modes
+        self.toggle_button = QPushButton("Switch to Image Detection", self)
+        self.toggle_button.setCheckable(True)  # This makes it act as a toggle button
+        self.toggle_button.setChecked(False)  # Initially set to image detection mode
+        self.toggle_button.clicked.connect(self.switch_detection_mode)
+        buttons_layout.addWidget(self.toggle_button)
+
+        # Add the new button to extract frames
+        self.extract_button = QPushButton("Extract Frames", self)
+        self.extract_button.clicked.connect(self.extract_current_frame)
+        buttons_layout.addWidget(self.extract_button)
+
+    def switch_detection_mode(self):
+        # Toggle between image and video detection mode
+        if self.toggle_button.isChecked():
+            self.toggle_button.setText("Switch to Image Detection")
+            self.load_button.setText("Load Image")
+            self.player.detection_mode = "image"
+            print(self.player.detection_mode)
+        else:
+            self.toggle_button.setText("Switch to Video Detection")
+            self.load_button.setText("Load Video")
+            self.player.detection_mode = "video"
+
+    def extract_current_frame(self):
+        """Extract and save the current frame being displayed in the video."""
+        if self.player.cap is None or not self.player.cap.isOpened():
+            print("No video loaded or video capture is not open.")
+            return
+
+        # Get the current position in the video
+        current_pos = int(self.player.cap.get(cv2.CAP_PROP_POS_FRAMES))
+        self.player.cap.set(cv2.CAP_PROP_POS_FRAMES, current_pos)
+
+        # Read the current frame
+        ret, frame = self.player.cap.read()
+        if ret:
+            # Save the current frame as an image file
+            frame_filename = f"./ff_images/current_frame_{current_pos:04d}.jpg"
+            cv2.imwrite(frame_filename, frame)
+            print(f"Saved current frame as {frame_filename}")
+        else:
+            print("Failed to extract current frame.")

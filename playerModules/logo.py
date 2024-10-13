@@ -20,7 +20,7 @@ class LogoPlaceholderWidget(QWidget):
 class HomeScreenWidget(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-
+        self.player = parent
         # Set up the layout for the home screen
         self.layout = QVBoxLayout(self)
         # Create and configure the instructions label
@@ -45,15 +45,33 @@ class HomeScreenWidget(QWidget):
         self.logo_widget = LogoPlaceholderWidget(logo_paths)
 
         # Load button
-        self.load_button = QPushButton("Load Video/Image", self)
+        self.load_button = QPushButton("Load Video", self)
         self.load_button.clicked.connect(
-            parent.load_video
+            parent.load_media
         )  # Connect to parent's load_video method
 
         # Add widgets to layout
         self.layout.addWidget(self.instructions_label)
         self.layout.addWidget(self.load_button)
         self.layout.addWidget(self.logo_widget)
+        # Add this in your setup method where you define the UI elements
+        self.toggle_button = QPushButton("Switch to Image Detection", self)
+        self.toggle_button.setCheckable(True)  # This makes it act as a toggle button
+        self.toggle_button.setChecked(False)  # Initially set to image detection mode
+        self.toggle_button.clicked.connect(self.switch_detection_mode)
+        self.layout.addWidget(self.toggle_button)
+
+    def switch_detection_mode(self):
+        # Toggle between image and video detection mode
+        if self.toggle_button.isChecked():
+            self.toggle_button.setText("Switch to Image Detection")
+            self.load_button.setText("Load Image")
+            self.player.detection_mode = "image"
+            print(self.player.detection_mode)
+        else:
+            self.toggle_button.setText("Switch to Video Detection")
+            self.load_button.setText("Load Video")
+            self.player.detection_mode = "video"
 
     def clear(self):
         """Clear all widgets in the home screen layout."""
