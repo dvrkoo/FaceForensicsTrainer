@@ -29,10 +29,11 @@ def display_processed_image(result_path):
     axs = fig.subplots(1, cols)
 
     # Set the title based on the score
-    fig.suptitle(
-        "Score: %.3f - %s"
-        % (result["score"], "Fake" if result["score"] > 0.5 else "Not Fake")
-    )
+    fig.suptitle("Score: %.3f " % result["score"])
+    # fig.suptitle(
+    #     "Score: %.3f - %s"
+    #     % (result["score"], "Fake" if result["score"] > 0.5 else "Not Fake")
+    # )
 
     axs[0].imshow(result["map"], cmap="RdBu_r", clim=[0, 1])
     axs[0].set_title("Localization map")

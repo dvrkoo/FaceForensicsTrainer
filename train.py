@@ -13,7 +13,7 @@ from torch.utils.tensorboard import SummaryWriter
 from torchvision import transforms
 from tqdm import tqdm
 
-from dataset.transform import CustomImageDataset, CustomImageDatasetFromFreq
+from dataset.transform import CustomImageDataset
 from network.models import model_selection
 
 if torch.cuda.is_available():

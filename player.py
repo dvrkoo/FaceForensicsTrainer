@@ -72,9 +72,6 @@ class VideoPlayerApp(QWidget):
         selected_model = models_index[index - 1] if index > 0 else None
         self.selected_model = selected_model  # Store the selected model in the class
 
-    def setup_image_prediction(self):
-        pass
-
     def clear_logo_widget(self):
         """Clear the home screen widget."""
         if hasattr(self, "home_widget"):
@@ -142,13 +139,12 @@ class VideoPlayerApp(QWidget):
         self.current_frame = 0
 
         # Read and display the first frame
-        ret, frame = self.cap.read()
-        if ret:
-            self.display_frame(
-                cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            )  # Show the first frame
-        else:
-            self.playing = False
+        if not file_path.endswith((".jpg", ".png")):
+            ret, frame = self.cap.read()
+            if ret:
+                self.display_frame(
+                    cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                )  # Show the first frame
 
         # Set the total frame count in the progress bar
 
@@ -182,13 +178,13 @@ class VideoPlayerApp(QWidget):
         if file_path:
             # If video mode is selected, always load as a video
             if self.detection_mode == "video":
-                if file_path.endswith((".jpg", ".png")):
-                    self.display_error(
-                        "Invalid file type",
-                        "Please select a video file for video detection.",
-                    )
-                else:
-                    self.load_video(file_path)
+                # if file_path.endswith((".jpg", ".png")):
+                #     self.display_error(
+                #         "Invalid file type",
+                #         "Please select a video file for video detection.",
+                #     )
+                # else:
+                self.load_video(file_path)
             # If image mode is selected, load based on the file extension
             elif self.detection_mode == "image":
                 if file_path.endswith((".jpg", ".png")):
@@ -214,7 +210,8 @@ class VideoPlayerApp(QWidget):
         self.selected_models = self.video_widget.model_dropdown.returnSelectedItems()
         # Read a frame from the video
         if self.playing and not self.image:
-            self.current_frame += 1
+            if self.total_frames != 1:
+                self.current_frame += 1
             ret, frame = self.cap.read()
             if ret:
                 frame = model_functions.convert_color_space(frame)
@@ -248,7 +245,6 @@ class VideoPlayerApp(QWidget):
             else:
                 self.playing = False
                 self.video_widget.play_button.setText("Play")
-                self.load_button.show()
                 self.timer.stop()
         # frame logic
         elif self.image:
