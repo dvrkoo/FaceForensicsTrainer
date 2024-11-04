@@ -42,9 +42,10 @@ class CheckableComboBox(QComboBox):
                 selected_models.append(item.text())
         return selected_models
 
-    def handleItemChanged(self, item):
+    def handleItemChanged(self, item, parent=None):
         # This method will be called whenever an item's check state changes
         if item.checkState() == Qt.Checked:
             print(f"{item.text()} checked")
+
         else:
             print(f"{item.text()} unchecked")

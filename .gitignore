@@ -1,7 +1,11 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
+videos/*
+ff_images/*
 *.py[cod]
 *$py.class
+Trufor/weights/trufor.pth.tar
+Trufor/output/
 
 SummaryWriter/
 freq/*

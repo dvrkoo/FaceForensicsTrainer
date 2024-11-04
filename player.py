@@ -229,6 +229,7 @@ class VideoPlayerApp(QWidget):
                     for model in models_index:
                         # use model
                         if model not in self.selected_models:
+                            print(model)
                             predictions.append([0])
                             continue
                         else:
