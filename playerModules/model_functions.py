@@ -9,6 +9,7 @@ import numpy as np
 
 from dataset.transform import xception_default_data_transforms, resnet_transform
 from network.models import model_selection
+from network.resnet import ResNet50
 
 
 def get_resource_path(relative_path):
@@ -39,9 +40,30 @@ def load_models():
         print(f"Loading {model_name} Model")
         checkpoint = torch.load(
             get_resource_path(f"./trained_models/resnet_{model_name}.pt"),
-            map_location="cpu",
+            map_location=device,
         )
         model.load_state_dict(checkpoint["model_state_dict"])
+        model = model.to(device)
+        model.eval()
+        models.append(model)
+
+        detector = dlib.get_frontal_face_detector()
+
+    return models, detector
+
+
+def load_freq_models():
+    models = []
+    for model_name in model_names:
+        model = ResNet50(2, 3)
+        print(f"Loading {model_name} Model")
+        checkpoint = torch.load(
+            get_resource_path(
+                f"./trained_models/224_{model_name}_crops_packets_haar_reflect_1_0.001__resnet.pt"
+            ),
+            map_location=device,
+        )
+        model.load_state_dict(checkpoint)
         model = model.to(device)
         model.eval()
         models.append(model)
@@ -87,12 +109,18 @@ def detect_faces(frame, detector):
 
 
 def preprocess_input(face_roi):
-    image = cv2.cvtColor(face_roi, cv2.COLOR_BGR2RGB)
+    # image = cv2.cvtColor(face_roi, cv2.COLOR_BGR2RGB)
+    image = face_roi
     # preprocess = xception_default_data_transforms["test"]
     preprocess = resnet_transform
     preprocessed_image = preprocess(Image.fromarray(image))
     preprocessed_image = preprocessed_image.unsqueeze(0)
     preprocessed_image = preprocessed_image.to(device)
+    return preprocessed_image
+
+
+def preprocess_input_freq(face_roi):
+    preprocessed_image = cv2.resize(face_roi, (224, 224))
     return preprocessed_image
 
 

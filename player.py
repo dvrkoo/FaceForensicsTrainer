@@ -11,7 +11,7 @@ from PyQt5.QtWidgets import (
     QWidget,
 )
 
-
+from playerModules.wavelet_math import batch_packet_preprocessing
 from PyQt5.QtWidgets import QMessageBox
 from playerModules import model_functions
 from playerModules.timer import VideoTimer
@@ -19,17 +19,40 @@ from Trufor.src.trufor_test import load_model
 from Trufor.visualize import ProcessedImageWidget
 from playerModules.video_widget import VideoWidget
 from playerModules.logo import HomeScreenWidget
+import numpy as np
 from playerModules.video_predictions import VideoPredictionWidget
 
 models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
 
 
 class VideoPlayerApp(QWidget):
+
+    def unload_models(self):
+        for i, model in enumerate(self.models):
+            self.models[i] = model.cpu()  # Move the model to CPU and update the list
+            del self.models[i]  # Delete the model reference to free up memory
+
+        # Optionally, clear the list and force garbage collection
+        self.models.clear()
+        import gc
+
+        gc.collect()
+        torch.cuda.empty_cache()
+        print(self.models)
+        print("Models unloaded.")
+        if not self.freq:
+            self.models, self.detector = model_functions.load_freq_models()
+            self.freq = True
+        else:
+            self.models, self.detector = model_functions.load_models()
+            self.freq = False
+
     def __init__(self):
         super().__init__()
         # Set up UI
         self.setup_ui()
         self.models, self.detector = model_functions.load_models()
+        self.freq = False
         self.resizing = False
         # Initialize video capture to None
         self.cap = None
@@ -178,12 +201,6 @@ class VideoPlayerApp(QWidget):
         if file_path:
             # If video mode is selected, always load as a video
             if self.detection_mode == "video":
-                # if file_path.endswith((".jpg", ".png")):
-                #     self.display_error(
-                #         "Invalid file type",
-                #         "Please select a video file for video detection.",
-                #     )
-                # else:
                 self.load_video(file_path)
             # If image mode is selected, load based on the file extension
             elif self.detection_mode == "image":
@@ -224,8 +241,17 @@ class VideoPlayerApp(QWidget):
                     face_roi = frame[y : y + size, x : x + size]
 
                     # Preprocess the face image for model input
-                    input_tensor = model_functions.preprocess_input(face_roi)
+                    # input_tensor = model_functions.preprocess_input(face_roi)
                     predictions = []
+
+                    if self.freq:
+                        input_tensor = model_functions.preprocess_input_freq(face_roi)
+                        input_tensor = input_tensor[np.newaxis, :]
+                        input_tensor = batch_packet_preprocessing(input_tensor)
+                        input_tensor = torch.from_numpy(input_tensor).to(device)
+                    else:
+                        input_tensor = model_functions.preprocess_input(face_roi)
+
                     for model in models_index:
                         # use model
                         if model not in self.selected_models:

@@ -49,6 +49,11 @@ class VideoWidget(QWidget):
         self.load_button.clicked.connect(parent.load_media)
         buttons_layout.addWidget(self.load_button)
 
+        # Add a button to unload models
+        self.unload_button = QPushButton("Switch Models", self)
+        self.unload_button.clicked.connect(parent.unload_models)
+        buttons_layout.addWidget(self.unload_button)
+
         # Add the toggle button for switching between detection modes
         self.toggle_button = QPushButton("Switch to Image Detection", self)
         self.toggle_button.setCheckable(True)  # This makes it act as a toggle button
