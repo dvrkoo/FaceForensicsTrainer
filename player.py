@@ -42,13 +42,16 @@ class VideoPlayerApp(QWidget):
         print("Models unloaded.")
         if not self.freq:
             self.models, self.detector = model_functions.load_freq_models()
+            self.video_widget.models_label.setText("Frequency Domain Models")
             self.freq = True
         else:
             self.models, self.detector = model_functions.load_models()
+            self.video_widget.models_label.setText("Pixel Domain Models")
             self.freq = False
 
     def __init__(self):
         super().__init__()
+        self.video_writer = False
         # Set up UI
         self.setup_ui()
         self.models, self.detector = model_functions.load_models()
@@ -132,6 +135,7 @@ class VideoPlayerApp(QWidget):
         self.display_frame(image_rgb)
 
     def load_video(self, file_path):
+        self.video_writer = False
         self.clear_logo_widget()
         self.video_widget.show()
 
@@ -225,6 +229,18 @@ class VideoPlayerApp(QWidget):
 
     def timerEvent(self):
         self.selected_models = self.video_widget.model_dropdown.returnSelectedItems()
+
+        # Initialize VideoWriter if not already done
+        if self.video_writer is True:
+            output_filename = "./processed_video_output.mp4"
+            fourcc = cv2.VideoWriter_fourcc(*"mp4v")
+            fps = self.cap.get(cv2.CAP_PROP_FPS)
+            width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+            height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+            self.video_writer = cv2.VideoWriter(
+                output_filename, fourcc, fps, (width, height)
+            )
+
         # Read a frame from the video
         if self.playing and not self.image:
             if self.total_frames != 1:
@@ -232,18 +248,17 @@ class VideoPlayerApp(QWidget):
             ret, frame = self.cap.read()
             if ret:
                 frame = model_functions.convert_color_space(frame)
+
                 # Perform face detection using dlib
                 detected_faces = model_functions.detect_faces(frame, self.detector)
                 if detected_faces:
-                    # if more than one face is detected, use the first one which is also the biggest one
+                    # Use the first (largest) detected face
                     face_1 = detected_faces[0]
                     x, y, size = model_functions.get_boundingbox(face_1, frame)
                     face_roi = frame[y : y + size, x : x + size]
 
                     # Preprocess the face image for model input
-                    # input_tensor = model_functions.preprocess_input(face_roi)
                     predictions = []
-
                     if self.freq:
                         input_tensor = model_functions.preprocess_input_freq(face_roi)
                         input_tensor = input_tensor[np.newaxis, :]
@@ -253,9 +268,7 @@ class VideoPlayerApp(QWidget):
                         input_tensor = model_functions.preprocess_input(face_roi)
 
                     for model in models_index:
-                        # use model
                         if model not in self.selected_models:
-                            print(model)
                             predictions.append([0])
                             continue
                         else:
@@ -266,14 +279,29 @@ class VideoPlayerApp(QWidget):
                             )
                             predictions.append(prediction)
 
+                    # Update the frame with predictions
                     self.update_label(face_1, predictions, frame)
                     self.update_predictions(predictions)
+
+                # Write the processed frame to the video writer
+                if self.video_writer is not False:
+                    frame_bgr = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+                    self.video_writer.write(frame_bgr)
+
+                # Display the processed frame in the UI
                 self.display_frame(frame)
             else:
+                # End of video
                 self.playing = False
                 self.video_widget.play_button.setText("Play")
                 self.timer.stop()
-        # frame logic
+
+                # Release the video writer
+                if self.video_writer is not False:
+                    self.video_writer.release()
+                    self.video_writer = False
+                    print("Processed video saved as './processed_video_output.mp4'")
+        # Image logic (not video playback)
         elif self.image:
             frame = self.cap  # Calculate scaling factors
             self.display_frame(frame)

@@ -15,13 +15,11 @@ models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshif
 
 class VideoWidget(QWidget):
     def __init__(self, parent=None):
+        self.video_writer = False
         super().__init__(parent)
         self.player = parent
 
-        self.setContentsMargins(0, 0, 0, 0)
         self.layout = QHBoxLayout(self)
-        self.layout.setSpacing(0)
-        self.layout.setContentsMargins(0, 0, 0, 0)
 
         buttons_layout = QVBoxLayout()
         self.layout.addLayout(buttons_layout)
@@ -32,10 +30,10 @@ class VideoWidget(QWidget):
         self.video_label = QLabel(self)
         self.video_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         self.video_label.setAlignment(Qt.AlignLeft)
+        self.layout.addWidget(self.video_label)
 
         # Add widgets to the layouts
         buttons_layout.addWidget(self.model_dropdown)
-        self.layout.addWidget(self.video_label)
         buttons_layout.setAlignment(Qt.AlignCenter)
 
         # Add play and pause buttons
@@ -66,15 +64,32 @@ class VideoWidget(QWidget):
         self.extract_button.clicked.connect(self.extract_current_frame)
         buttons_layout.addWidget(self.extract_button)
 
+        # Add label to display which models we're using
+        self.models_label = QLabel("Pixel Domain Models")
+        self.models_label.setAlignment(Qt.AlignCenter)
+        self.models_label.setStyleSheet("font-weight: bold;")
+        self.models_label.setStyleSheet("font-size: 30px;")
+        self.models_label.sizePolicy().setVerticalPolicy(QSizePolicy.Expanding)
+        self.process_video_button = QPushButton("Process Video and Save")
+        self.process_video_button.clicked.connect(self.process_video)
+        buttons_layout.addWidget(self.process_video_button)
+        # add padding right
+        self.layout.addWidget(self.models_label)
+
+    def process_video(self):
+        self.player.video_writer = True
+
     def switch_detection_mode(self):
         # Toggle between image and video detection mode
         if self.toggle_button.isChecked():
             self.toggle_button.setText("Switch to Video Detection")
             self.load_button.setText("Load Image")
             self.player.detection_mode = "image"
+            self.unload_button.hide()
             print(self.player.detection_mode)
         else:
             self.toggle_button.setText("Switch to Image Detection")
+            self.unload_button.show()
             self.load_button.setText("Load Video")
             self.player.detection_mode = "video"
 
