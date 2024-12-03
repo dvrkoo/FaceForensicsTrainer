@@ -36,6 +36,9 @@ class VideoPlayerApp(QWidget):
         self.models.clear()
         import gc
 
+        self.current_frame = 0
+        self.video_prediction_widget.reset_past_predictions()
+
         gc.collect()
         torch.cuda.empty_cache()
         print(self.models)
