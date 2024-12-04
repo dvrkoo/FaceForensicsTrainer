@@ -48,7 +48,7 @@ class VideoWidget(QWidget):
         buttons_layout.addWidget(self.load_button)
 
         # Add a button to unload models
-        self.unload_button = QPushButton("Switch Models", self)
+        self.unload_button = QPushButton("Switch To Frequency Domain", self)
         self.unload_button.clicked.connect(parent.unload_models)
         buttons_layout.addWidget(self.unload_button)
 
@@ -63,18 +63,6 @@ class VideoWidget(QWidget):
         self.extract_button = QPushButton("Extract Frames", self)
         self.extract_button.clicked.connect(self.extract_current_frame)
         buttons_layout.addWidget(self.extract_button)
-
-        # Add label to display which models we're using
-        self.models_label = QLabel("Pixel Domain Models")
-        self.models_label.setAlignment(Qt.AlignCenter)
-        self.models_label.setStyleSheet("font-weight: bold;")
-        self.models_label.setStyleSheet("font-size: 30px;")
-        self.models_label.sizePolicy().setVerticalPolicy(QSizePolicy.Expanding)
-        self.process_video_button = QPushButton("Process Video and Save")
-        self.process_video_button.clicked.connect(self.process_video)
-        buttons_layout.addWidget(self.process_video_button)
-        # add padding right
-        self.layout.addWidget(self.models_label)
 
     def process_video(self):
         self.player.video_writer = True

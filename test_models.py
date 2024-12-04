@@ -12,6 +12,9 @@ from torch.utils.data import DataLoader
 # from train_classifier import create_data_loaders
 
 # Check if GPU is available
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+
 transform = transforms.Compose(
     [
         transforms.Resize((224, 224)),
@@ -79,7 +82,11 @@ models = {}
 val_data_loaders = {}
 
 for model_name in os.listdir("./trained_models/"):
-    if model_name != "model_pre.pt":
+    if (
+        model_name != "model_pre.pt"
+        and not model_name.startswith("224_")
+        and model_name.startswith("resnet")
+    ):
         model_path = os.path.join("./trained_models", model_name)
         model = load_model(False)
         checkpoint = torch.load(model_path)
@@ -89,7 +96,7 @@ for model_name in os.listdir("./trained_models/"):
         extracted_model_name = model_name.replace("resnet_", "").replace(".pt", "")
         models[extracted_model_name] = model
         # Load the validation data loader for this model
-        data_prefix = f"/home/nick/ff_crops/{extracted_model_name}_crops/"
+        data_prefix = f"/home/nick/Face/c40/output/{extracted_model_name}/"
 
         val_data_loader = load_dataset(data_prefix)
         val_data_loaders[model_name] = val_data_loader

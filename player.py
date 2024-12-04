@@ -1,4 +1,11 @@
 import sys
+import os
+
+os.environ.update(
+    {
+        "QT_QPA_PLATFORM_PLUGIN_PATH": "/home/nick/GitHub/FaceForensicsTrainer/.venv/lib/python3.12/site-packages/PyQt5/Qt5/plugins/xcbglintegrations/libqxcb-glx-integration.so"
+    }
+)
 import cv2
 import torch
 from PyQt5.QtGui import QImage, QPixmap, QFont
@@ -45,11 +52,11 @@ class VideoPlayerApp(QWidget):
         print("Models unloaded.")
         if not self.freq:
             self.models, self.detector = model_functions.load_freq_models()
-            self.video_widget.models_label.setText("Frequency Domain Models")
+            self.video_widget.unload_button.setText("Switch to Pixel Domain")
             self.freq = True
         else:
             self.models, self.detector = model_functions.load_models()
-            self.video_widget.models_label.setText("Pixel Domain Models")
+            self.video_widget.unload_button.setText("Switch to Frequency Domain")
             self.freq = False
 
     def __init__(self):
