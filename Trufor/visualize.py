@@ -2,9 +2,53 @@ import os
 import numpy as np
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
+import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QFileDialog, QLabel
 import cv2
 from PyQt5.QtWidgets import QMainWindow
+
+
+class ProcessedMantraWidget(QWidget):
+    def __init__(self, results, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+        self.canvas = None  # Initially, there is no canvas
+
+        self.update_display(results)
+
+    def update_display(self, results):
+        """Update the display with the processed image based on the input image path."""
+        # Clear the previous canvas if it exists
+        if self.canvas:
+            self.layout.removeWidget(self.canvas)
+            self.canvas.deleteLater()  # Safely remove the previous canvas
+
+        # Process the image and get the results
+
+        # Create a Matplotlib figure to display the results
+        figure = self.create_figure(results)
+
+        # Embed the Matplotlib figure in the widget
+        self.canvas = FigureCanvas(figure)
+        self.layout.addWidget(self.canvas)
+
+    def create_figure(self, results):
+        """Create a Matplotlib figure to display the processed results."""
+        figure = plt.figure(figsize=(20, 20))
+
+        # Original Image
+
+        # Forgery Mask
+        plt.subplot(1, 2, 1)
+        plt.imshow(results["forgery_mask"], cmap="gray")
+        plt.title("Predicted Forgery Mask")
+
+        # Suspicious Regions
+        plt.subplot(1, 2, 2)
+        plt.imshow(results["suspicious_regions"])
+        plt.title("Suspicious Regions Detected")
+
+        return figure
 
 
 def derive_output_path(input_image_path):

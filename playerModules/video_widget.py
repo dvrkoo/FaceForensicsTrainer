@@ -64,6 +64,18 @@ class VideoWidget(QWidget):
         self.extract_button.clicked.connect(self.extract_current_frame)
         buttons_layout.addWidget(self.extract_button)
 
+        # add save video button
+        self.process_video_button = QPushButton("Process and Save Video", self)
+        self.process_video_button.clicked.connect(self.process_video)
+        self.process_video_button.setCheckable(True)
+        self.process_video_button.setChecked(False)
+        buttons_layout.addWidget(self.process_video_button)
+
+        self.image_model_switch = QPushButton("Switch to Mantranet", self)
+        self.image_model_switch.setCheckable(True)
+        self.image_model_switch.setChecked(False)
+        buttons_layout.addWidget(self.image_model_switch)
+
     def process_video(self):
         self.player.video_writer = True
 

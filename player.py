@@ -23,16 +23,32 @@ from PyQt5.QtWidgets import QMessageBox
 from playerModules import model_functions
 from playerModules.timer import VideoTimer
 from Trufor.src.trufor_test import load_model
-from Trufor.visualize import ProcessedImageWidget
+from Trufor.visualize import ProcessedImageWidget, ProcessedMantraWidget
 from playerModules.video_widget import VideoWidget
 from playerModules.logo import HomeScreenWidget
+from playerModules.mantranet import pre_trained_model, check_forgery
 import numpy as np
 from playerModules.video_predictions import VideoPredictionWidget
+from PIL import Image
 
 models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
 
 
 class VideoPlayerApp(QWidget):
+
+    def check_image_mantra(self, img_path):
+        device = "mps"  # to change if you have a GPU with at least 12Go RAM (it will save you a lot of time !)
+        image = Image.open(img_path)
+
+        # Convert to RGB if it's RGBA or grayscale
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
+        MantraNetmodel = pre_trained_model(
+            weight_path="trained_models/MantraNetv4.pt", device=device
+        )
+        figs = check_forgery(MantraNetmodel, img_path=img_path, device=device)
+        return figs
 
     def unload_models(self):
         for i, model in enumerate(self.models):
@@ -116,12 +132,30 @@ class VideoPlayerApp(QWidget):
             self.home_widget.deleteLater()
             del self.home_widget  # Optional: delete reference to avoid future errors
 
+    def hide_buttons_for_image(self):
+        """Hides the play button and process video button for image detection."""
+        self.video_widget.play_button.hide()
+        self.video_widget.process_video_button.hide()
+        self.video_widget.unload_button.hide()
+        self.video_widget.extract_button.hide()
+        self.video_widget.image_model_switch.show()
+
+    def show_buttons_for_video(self):
+        """Shows the play button and process video button for video detection."""
+        self.video_widget.play_button.show()
+        self.video_widget.process_video_button.show()
+        self.video_widget.unload_button.show()
+        self.video_widget.extract_button.show()
+        self.video_widget.image_model_switch.hide()
+
     def load_image(self, file_path):
+        self.hide_buttons_for_image()
         self.clear_logo_widget()
         if self.processed_image_widget:
-            self.layout.removeWidget(self.processed_image_widget)
+            # self.layout.removeWidget(self.processed_image_widget)
             self.processed_image_widget.deleteLater()  # Safely delete the old widget
         self.video_widget.show()
+        self.video_widget.toggle_button.setChecked(True)
         # Load the image
         image = cv2.imread(file_path)
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -134,17 +168,25 @@ class VideoPlayerApp(QWidget):
         if self.video_prediction_widget:
             self.video_prediction_widget.hide()
 
-        # Load the model associated with the image
-        load_model(file_path)
+        if self.video_widget.image_model_switch.isChecked():
+            figs = self.check_image_mantra(file_path)
+            self.processed_image_widget = ProcessedMantraWidget(figs)
+            self.layout.addWidget(self.processed_image_widget)
+            self.display_frame(image_rgb)
 
-        # Display the processed image in the appropriate widget
-        self.processed_image_widget = ProcessedImageWidget(file_path)
-        self.layout.addWidget(self.processed_image_widget)
-
-        # Show the first frame (image)
-        self.display_frame(image_rgb)
+            # self.processed_image_widget = ProcessedImageWidget(file_path)
+        else:
+            load_model(file_path)
+            # Display the processed image in the appropriate widget
+            self.processed_image_widget = ProcessedImageWidget(file_path)
+            self.layout.addWidget(self.processed_image_widget)
+            # Show the first frame (image)
+            self.display_frame(image_rgb)
 
     def load_video(self, file_path):
+        self.show_buttons_for_video()
+        self.video_name = file_path.split("/")[-1]
+        self.output_filename = None
         self.video_writer = False
         self.clear_logo_widget()
         self.video_widget.show()
@@ -215,7 +257,13 @@ class VideoPlayerApp(QWidget):
         if file_path:
             # If video mode is selected, always load as a video
             if self.detection_mode == "video":
-                self.load_video(file_path)
+                if file_path.endswith((".mp4", ".avi")):
+                    self.load_video(file_path)
+                else:
+                    self.display_error(
+                        "Invalid file type",
+                        "Please select a video file for video detection.",
+                    )
             # If image mode is selected, load based on the file extension
             elif self.detection_mode == "image":
                 if file_path.endswith((".jpg", ".png")):
@@ -241,15 +289,25 @@ class VideoPlayerApp(QWidget):
         self.selected_models = self.video_widget.model_dropdown.returnSelectedItems()
 
         # Initialize VideoWriter if not already done
-        if self.video_writer is True:
-            output_filename = "./processed_video_output.mp4"
+        if (
+            self.video_widget.process_video_button.isChecked()
+            and not self.output_filename
+        ):
+            self.output_filename = self.video_name + f"_{self.current_frame}.mp4"
             fourcc = cv2.VideoWriter_fourcc(*"mp4v")
             fps = self.cap.get(cv2.CAP_PROP_FPS)
             width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
             self.video_writer = cv2.VideoWriter(
-                output_filename, fourcc, fps, (width, height)
+                self.output_filename, fourcc, fps, (width, height)
             )
+
+        if self.video_widget.process_video_button.isChecked():
+            self.video_widget.process_video_button.setText("End Processing")
+        if not self.video_widget.process_video_button.isChecked():
+            self.video_widget.process_video_button.setText("Process and Save Video")
+            self.video_writer = False
+            self.output_filename = None
 
         # Read a frame from the video
         if self.playing and not self.image:
