@@ -10,7 +10,8 @@ from PyQt5.QtWidgets import (
 from .models_dropdown import CheckableComboBox
 import cv2
 
-models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
+video_models = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
+image_models = ["TruFor", "MantraNet"]
 
 
 class VideoWidget(QWidget):
@@ -25,7 +26,13 @@ class VideoWidget(QWidget):
         self.layout.addLayout(buttons_layout)
 
         self.model_dropdown = CheckableComboBox()
-        self.model_dropdown.addItems(models_index)
+        self.model_dropdown.addItems(video_models)
+        self.image_model_dropdown = CheckableComboBox(image=True)
+        self.image_model_dropdown.addItems(image_models)
+        # uncheck all items
+        for i in range(1, self.image_model_dropdown.model().rowCount()):
+            self.model_dropdown.model().item(i).setCheckState(Qt.Unchecked)
+        self.image_model_dropdown.hide()
 
         self.video_label = QLabel(self)
         self.video_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
@@ -34,6 +41,7 @@ class VideoWidget(QWidget):
 
         # Add widgets to the layouts
         buttons_layout.addWidget(self.model_dropdown)
+        buttons_layout.addWidget(self.image_model_dropdown)
         buttons_layout.setAlignment(Qt.AlignCenter)
 
         # Add play and pause buttons
@@ -71,11 +79,6 @@ class VideoWidget(QWidget):
         self.process_video_button.setChecked(False)
         buttons_layout.addWidget(self.process_video_button)
 
-        self.image_model_switch = QPushButton("Switch to Mantranet", self)
-        self.image_model_switch.setCheckable(True)
-        self.image_model_switch.setChecked(False)
-        buttons_layout.addWidget(self.image_model_switch)
-
     def process_video(self):
         self.player.video_writer = True
 
@@ -83,11 +86,21 @@ class VideoWidget(QWidget):
         # Toggle between image and video detection mode
         if self.toggle_button.isChecked():
             self.toggle_button.setText("Switch to Video Detection")
+            self.model_dropdown.hide()
+            self.image_model_dropdown.show()
+            self.play_button.hide()
+            self.extract_button.hide()
+            self.process_video_button.hide()
             self.load_button.setText("Load Image")
             self.player.detection_mode = "image"
             self.unload_button.hide()
             print(self.player.detection_mode)
         else:
+            self.model_dropdown.show()
+            self.image_model_dropdown.hide()
+            self.play_button.show()
+            self.extract_button.show()
+            self.process_video_button.show()
             self.toggle_button.setText("Switch to Image Detection")
             self.unload_button.show()
             self.load_button.setText("Load Video")

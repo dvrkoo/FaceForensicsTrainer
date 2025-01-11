@@ -36,51 +36,13 @@ models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshif
 
 class VideoPlayerApp(QWidget):
 
-    def check_image_mantra(self, img_path):
-        device = "mps"  # to change if you have a GPU with at least 12Go RAM (it will save you a lot of time !)
-        image = Image.open(img_path)
-
-        # Convert to RGB if it's RGBA or grayscale
-        if image.mode != "RGB":
-            image = image.convert("RGB")
-
-        MantraNetmodel = pre_trained_model(
-            weight_path="trained_models/MantraNetv4.pt", device=device
-        )
-        figs = check_forgery(MantraNetmodel, img_path=img_path, device=device)
-        return figs
-
-    def unload_models(self):
-        for i, model in enumerate(self.models):
-            self.models[i] = model.cpu()  # Move the model to CPU and update the list
-            del self.models[i]  # Delete the model reference to free up memory
-
-        # Optionally, clear the list and force garbage collection
-        self.models.clear()
-        import gc
-
-        self.current_frame = 0
-        self.video_prediction_widget.reset_past_predictions()
-
-        gc.collect()
-        torch.cuda.empty_cache()
-        print(self.models)
-        print("Models unloaded.")
-        if not self.freq:
-            self.models, self.detector = model_functions.load_freq_models()
-            self.video_widget.unload_button.setText("Switch to Pixel Domain")
-            self.freq = True
-        else:
-            self.models, self.detector = model_functions.load_models()
-            self.video_widget.unload_button.setText("Switch to Frequency Domain")
-            self.freq = False
-
     def __init__(self):
         super().__init__()
         self.video_writer = False
         # Set up UI
+        self.models = None
+        self.detector = None
         self.setup_ui()
-        self.models, self.detector = model_functions.load_models()
         self.freq = False
         self.resizing = False
         # Initialize video capture to None
@@ -119,6 +81,45 @@ class VideoPlayerApp(QWidget):
                 predictions, self.selected_models
             )
 
+    def check_image_mantra(self, img_path):
+        device = torch.device("cuda" if torch.cuda.is_available() else "mps")
+        image = Image.open(img_path)
+
+        # Convert to RGB if it's RGBA or grayscale
+        if image.mode != "RGB":
+            image = image.convert("RGB")
+
+        MantraNetmodel = pre_trained_model(
+            weight_path="trained_models/MantraNetv4.pt", device=device
+        )
+        figs = check_forgery(MantraNetmodel, img_path=img_path, device=device)
+        return figs
+
+    def unload_models(self):
+        for i, model in enumerate(self.models):
+            self.models[i] = model.cpu()  # Move the model to CPU and update the list
+            del self.models[i]  # Delete the model reference to free up memory
+
+        # Optionally, clear the list and force garbage collection
+        self.models.clear()
+        import gc
+
+        self.current_frame = 0
+        self.video_prediction_widget.reset_past_predictions()
+
+        gc.collect()
+        torch.cuda.empty_cache()
+        print(self.models)
+        print("Models unloaded.")
+        if not self.freq:
+            self.models, self.detector = model_functions.load_freq_models()
+            self.video_widget.unload_button.setText("Switch to Pixel Domain")
+            self.freq = True
+        else:
+            self.models, self.detector = model_functions.load_models()
+            self.video_widget.unload_button.setText("Switch to Frequency Domain")
+            self.freq = False
+
     def model_selection_changed(self, index):
         # Slot to be triggered when the selected model changes
         selected_model = models_index[index - 1] if index > 0 else None
@@ -138,24 +139,35 @@ class VideoPlayerApp(QWidget):
         self.video_widget.process_video_button.hide()
         self.video_widget.unload_button.hide()
         self.video_widget.extract_button.hide()
-        self.video_widget.image_model_switch.show()
+        self.video_widget.image_model_dropdown.show()
+        self.video_widget.model_dropdown.hide()
 
     def show_buttons_for_video(self):
         """Shows the play button and process video button for video detection."""
         self.video_widget.play_button.show()
+        self.video_widget.model_dropdown.show()
         self.video_widget.process_video_button.show()
         self.video_widget.unload_button.show()
         self.video_widget.extract_button.show()
-        self.video_widget.image_model_switch.hide()
+        self.video_widget.image_model_dropdown.hide()
 
     def load_image(self, file_path):
         self.hide_buttons_for_image()
+        # let's make a copy rather than a reference
+        if hasattr(self, "home_widget"):
+            for i in range(
+                1, self.video_widget.image_model_dropdown.model().rowCount()
+            ):
+                item = self.video_widget.image_model_dropdown.model().item(i)
+                item2 = self.home_widget.image_model_dropdown.model().item(i)
+                if item2.checkState() == Qt.Checked:
+                    item.setCheckState(Qt.Checked)
         self.clear_logo_widget()
         if self.processed_image_widget:
-            # self.layout.removeWidget(self.processed_image_widget)
             self.processed_image_widget.deleteLater()  # Safely delete the old widget
         self.video_widget.show()
         self.video_widget.toggle_button.setChecked(True)
+
         # Load the image
         image = cv2.imread(file_path)
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
@@ -168,22 +180,31 @@ class VideoPlayerApp(QWidget):
         if self.video_prediction_widget:
             self.video_prediction_widget.hide()
 
-        if self.video_widget.image_model_switch.isChecked():
+        # Get the selected model from the dropdown
+        selected_models = self.video_widget.image_model_dropdown.returnSelectedItems()
+        if not selected_models:
+            print("No model selected in the dropdown.")
+            return
+
+        selected_model = selected_models[
+            0
+        ]  # Assume only one item can be checked at a time
+        torch.cuda.empty_cache()
+        # Perform actions based on the selected model
+        if selected_model == "MantraNet":
             figs = self.check_image_mantra(file_path)
             self.processed_image_widget = ProcessedMantraWidget(figs)
             self.layout.addWidget(self.processed_image_widget)
             self.display_frame(image_rgb)
-
-            # self.processed_image_widget = ProcessedImageWidget(file_path)
-        else:
+        elif selected_model == "TruFor":
             load_model(file_path)
-            # Display the processed image in the appropriate widget
             self.processed_image_widget = ProcessedImageWidget(file_path)
             self.layout.addWidget(self.processed_image_widget)
-            # Show the first frame (image)
             self.display_frame(image_rgb)
 
     def load_video(self, file_path):
+        if self.models is None and self.detector is None:
+            self.models, self.detector = model_functions.load_models()
         self.show_buttons_for_video()
         self.video_name = file_path.split("/")[-1]
         self.output_filename = None
@@ -286,6 +307,7 @@ class VideoPlayerApp(QWidget):
             self.timer.stop()
 
     def timerEvent(self):
+
         self.selected_models = self.video_widget.model_dropdown.returnSelectedItems()
 
         # Initialize VideoWriter if not already done

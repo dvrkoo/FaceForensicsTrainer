@@ -1,6 +1,9 @@
 from PyQt5.QtWidgets import QWidget, QLabel, QVBoxLayout, QPushButton
 from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import Qt
+from .models_dropdown import CheckableComboBox
+
+image_models = ["TruFor", "MantraNet"]
 
 
 class LogoPlaceholderWidget(QWidget):
@@ -54,6 +57,11 @@ class HomeScreenWidget(QWidget):
         self.layout.addWidget(self.instructions_label)
         self.layout.addWidget(self.load_button)
         self.layout.addWidget(self.logo_widget)
+        self.image_model_dropdown = CheckableComboBox(image=True)
+        self.image_model_dropdown.addItems(image_models)
+        self.layout.addWidget(self.image_model_dropdown)
+        self.image_model_dropdown.hide()
+
         # Add this in your setup method where you define the UI elements
         self.toggle_button = QPushButton("Switch to Image Detection", self)
         self.toggle_button.setCheckable(True)  # This makes it act as a toggle button
@@ -68,7 +76,9 @@ class HomeScreenWidget(QWidget):
             self.load_button.setText("Load Image")
             self.player.detection_mode = "image"
             print(self.player.detection_mode)
+            self.image_model_dropdown.show()
         else:
+            self.image_model_dropdown.hide()
             self.toggle_button.setText("Switch to Video Detection")
             self.load_button.setText("Load Video")
             self.player.detection_mode = "video"

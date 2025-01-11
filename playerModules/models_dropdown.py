@@ -6,14 +6,17 @@ from PyQt5.QtWidgets import (
 
 
 class CheckableComboBox(QComboBox):
-    def __init__(self, *args, **kwargs):
+    def __init__(self, image=False, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.addItem("Select Models...")  # Placeholder text
         self.model().item(0).setEnabled(False)
         self.setStyleSheet("QComboBox { color: black; }")
-        self.model().itemChanged.connect(
-            self.handleItemChanged
-        )  # Connect signal to slot
+        if image:
+            self.model().itemChanged.connect(self.handleItemChangedImage)
+        else:
+            self.model().itemChanged.connect(
+                self.handleItemChanged
+            )  # Connect signal to slot
 
     def addItem(self, text, data=None):
         item = QStandardItem()
@@ -23,7 +26,7 @@ class CheckableComboBox(QComboBox):
         else:
             item.setData(data)
         item.setFlags(Qt.ItemIsEnabled | Qt.ItemIsUserCheckable)
-        item.setData(Qt.Checked, Qt.CheckStateRole)
+        item.setData(Qt.Unchecked, Qt.CheckStateRole)
         self.model().appendRow(item)
 
     def addItems(self, texts, datalist=None):
@@ -47,5 +50,16 @@ class CheckableComboBox(QComboBox):
         if item.checkState() == Qt.Checked:
             print(f"{item.text()} checked")
 
+        else:
+            print(f"{item.text()} unchecked")
+
+    def handleItemChangedImage(self, item):
+        # Ensure only one item is checked at a time
+        if item.checkState() == Qt.Checked:
+            for i in range(1, self.model().rowCount()):  # Skip placeholder text
+                other_item = self.model().item(i)
+                if other_item != item and other_item.checkState() == Qt.Checked:
+                    other_item.setCheckState(Qt.Unchecked)
+            print(f"{item.text()} checked")
         else:
             print(f"{item.text()} unchecked")

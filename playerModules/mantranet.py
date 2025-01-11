@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 
 device = torch.device("cuda" if torch.cuda.is_available() else "mps")
-device = torch.device("mps" if torch.cuda.is_available() else "cpu")
+# device = torch.device("mps" if torch.cuda.is_available() else "cpu")
 
 
 ##reproduction of the hardsigmoid coded in tensorflow (which is not exactly the same one in Pytorch)
