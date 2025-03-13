@@ -6,6 +6,7 @@ ff_images/*
 *$py.class
 Trufor/weights/trufor.pth.tar
 Trufor/output/
+playerModules/CLIP_WEIGHTS/
 
 SummaryWriter/
 freq/*

@@ -36,6 +36,10 @@ from playerModules.video_predictions import VideoPredictionWidget
 from playerModules.CLIPSynth import predict
 from PIL import Image
 
+MAX_FRAME_WIDTH = 800
+MAX_FRAME_HEIGHT = 600
+
+
 models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
 
 
@@ -71,7 +75,7 @@ class VideoPlayerApp(QWidget):
         self.layout = QVBoxLayout(self)
         self.video_widget = VideoWidget(self)
         self.video_widget.hide()
-        self.layout.addWidget(self.video_widget, stretch=1)
+        self.layout.addWidget(self.video_widget)
 
     def setup_video_prediction(self):
         """Initializes the video prediction widget and adds it to the main layout."""
@@ -403,40 +407,27 @@ class VideoPlayerApp(QWidget):
             self.display_frame(frame)
 
     def display_frame(self, frame):
-        # Reserve a fixed amount of vertical space for the bottom widget
-        reserved_space = 100  # adjust this value as needed
+        # Resize frame to fit within the maximum size
+        frame_resized = self.resize_frame(frame, MAX_FRAME_WIDTH, MAX_FRAME_HEIGHT)
 
-        # Use the video label's current dimensions for scaling.
-        video_label_height = self.video_widget.video_label.height()
-        video_label_width = self.video_widget.video_label.width()
-
-        # Calculate available height by subtracting the reserved space.
-        available_height = max(video_label_height - reserved_space, 1)
-
-        # Compute scaling factors for the frame based on the available dimensions.
-        height_scale = available_height / frame.shape[0]
-        width_scale = video_label_width / frame.shape[1]
-        scale = min(height_scale, width_scale)
-
-        # Clamp the scale to ensure it's not too small.
-        min_scale = 0.1
-        if scale < min_scale:
-            scale = min_scale
-
-        # Resize the frame using the computed scale.
-        frame_resized = cv2.resize(frame, None, fx=scale, fy=scale)
-
-        # Convert the frame to QImage and then display it.
+        # Convert frame to QImage and display it
         q_img = self.opencv_to_qimage(frame_resized)
         pixmap = QPixmap.fromImage(q_img)
         self.video_widget.video_label.setPixmap(pixmap)
         self.video_widget.video_label.setAlignment(Qt.AlignCenter)
 
-        # Update the progress bar if it's a video.
+        # Update progress bar if displaying a video
         if not self.image:
             self.video_prediction_widget.progress_bar.update_time_label(
                 self.current_frame
             )
+
+    def resize_frame(self, frame, max_width, max_height):
+        h, w = frame.shape[:2]
+        scale = min(max_width / w, max_height / h, 1.0)  # Ensure it never scales up
+        return cv2.resize(
+            frame, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA
+        )
 
     def opencv_to_qimage(self, frame):
         # Convert the OpenCV image to a QImage

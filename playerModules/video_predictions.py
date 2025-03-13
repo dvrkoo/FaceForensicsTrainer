@@ -48,7 +48,7 @@ class VideoPredictionWidget(QWidget):
 
             self.bottom_widget = QWidget()
             self.bottom_layout = QHBoxLayout(self.bottom_widget)
-            self.layout.addWidget(self.bottom_widget, stretch=1)
+            self.layout.addWidget(self.bottom_widget)
 
             self.scroll_area = QScrollArea(self)
             self.scroll_area.setWidgetResizable(True)
