@@ -91,7 +91,9 @@ def load_model(input):
         raise ValueError("Model file is not specified.")
 
     print("=> loading model from {}".format(model_state_file))
-    checkpoint = torch.load(model_state_file, map_location=torch.device(device))
+    checkpoint = torch.load(
+        model_state_file, map_location=torch.device(device), weights_only=False
+    )
 
     if config.MODEL.NAME == "detconfcmx":
         from Trufor.src.models.cmx.builder_np_conf import myEncoderDecoder as confcmx

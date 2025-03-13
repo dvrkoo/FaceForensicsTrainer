@@ -23,12 +23,17 @@ from PyQt5.QtWidgets import QMessageBox
 from playerModules import model_functions
 from playerModules.timer import VideoTimer
 from Trufor.src.trufor_test import load_model
-from Trufor.visualize import ProcessedImageWidget, ProcessedMantraWidget
+from Trufor.visualize import (
+    ProcessedImageWidget,
+    ProcessedMantraWidget,
+    ImageResultsWidget,
+)
 from playerModules.video_widget import VideoWidget
 from playerModules.logo import HomeScreenWidget
 from playerModules.mantranet import pre_trained_model, check_forgery
 import numpy as np
 from playerModules.video_predictions import VideoPredictionWidget
+from playerModules.CLIPSynth import predict
 from PIL import Image
 
 models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
@@ -194,13 +199,14 @@ class VideoPlayerApp(QWidget):
         if selected_model == "MantraNet":
             figs = self.check_image_mantra(file_path)
             self.processed_image_widget = ProcessedMantraWidget(figs)
-            self.layout.addWidget(self.processed_image_widget)
-            self.display_frame(image_rgb)
         elif selected_model == "TruFor":
             load_model(file_path)
             self.processed_image_widget = ProcessedImageWidget(file_path)
-            self.layout.addWidget(self.processed_image_widget)
-            self.display_frame(image_rgb)
+        elif selected_model == "CLIP_BSID":
+            results = predict(file_path)
+            self.processed_image_widget = ImageResultsWidget(results)
+        self.layout.addWidget(self.processed_image_widget)
+        self.display_frame(image_rgb)
 
     def load_video(self, file_path):
         if self.models is None and self.detector is None:
@@ -397,23 +403,36 @@ class VideoPlayerApp(QWidget):
             self.display_frame(frame)
 
     def display_frame(self, frame):
-        # Calculate scaling factors
-        height_scale = self.video_widget.video_label.height() / frame.shape[0]
-        width_scale = self.video_widget.video_label.width() / frame.shape[1]
+        # Reserve a fixed amount of vertical space for the bottom widget
+        reserved_space = 100  # adjust this value as needed
+
+        # Use the video label's current dimensions for scaling.
+        video_label_height = self.video_widget.video_label.height()
+        video_label_width = self.video_widget.video_label.width()
+
+        # Calculate available height by subtracting the reserved space.
+        available_height = max(video_label_height - reserved_space, 1)
+
+        # Compute scaling factors for the frame based on the available dimensions.
+        height_scale = available_height / frame.shape[0]
+        width_scale = video_label_width / frame.shape[1]
         scale = min(height_scale, width_scale)
 
-        # Resize the frame to fit the window
+        # Clamp the scale to ensure it's not too small.
+        min_scale = 0.1
+        if scale < min_scale:
+            scale = min_scale
+
+        # Resize the frame using the computed scale.
         frame_resized = cv2.resize(frame, None, fx=scale, fy=scale)
 
-        # Convert the OpenCV image to a QImage
+        # Convert the frame to QImage and then display it.
         q_img = self.opencv_to_qimage(frame_resized)
-
-        # Display the QImage in the QLabel
         pixmap = QPixmap.fromImage(q_img)
         self.video_widget.video_label.setPixmap(pixmap)
         self.video_widget.video_label.setAlignment(Qt.AlignCenter)
 
-        # Update the progress bar if it's a video
+        # Update the progress bar if it's a video.
         if not self.image:
             self.video_prediction_widget.progress_bar.update_time_label(
                 self.current_frame

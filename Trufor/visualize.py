@@ -6,6 +6,10 @@ import matplotlib.pyplot as plt
 from PyQt5.QtWidgets import QVBoxLayout, QWidget, QFileDialog, QLabel
 import cv2
 from PyQt5.QtWidgets import QMainWindow
+from PyQt5.QtGui import QPixmap
+from PyQt5.QtCore import Qt
+from PyQt5.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QHeaderView
+from PyQt5.QtGui import QColor
 
 
 class ProcessedMantraWidget(QWidget):
@@ -91,6 +95,71 @@ def display_processed_image(result_path):
     return fig
 
 
+class ImageResultsWidget(QWidget):
+    def __init__(self, results, parent=None):
+        """
+        Parameters:
+            results (dict): A dictionary with keys as model names and values as scores.
+        """
+        super(ImageResultsWidget, self).__init__(parent)
+        self.setWindowTitle("Fusion Results")
+        layout = QVBoxLayout(self)
+
+        # Create a table widget with three columns: Model, Score, Label
+        table = QTableWidget(len(results), 3)
+        table.setHorizontalHeaderLabels(["Model", "Score", "Label"])
+
+        # Apply styling using a stylesheet
+        table.setStyleSheet(
+            """
+            QTableWidget {
+                background-color: #f9f9f9;
+                gridline-color: #dcdcdc;
+                font-size: 18px;
+            }
+            QHeaderView::section {
+                background-color: #f0f0f0;
+                padding: 6px;
+                border: 1px solid #dcdcdc;
+                font-weight: bold;
+            }
+        """
+        )
+        table.setAlternatingRowColors(True)
+        table.verticalHeader().setVisible(False)
+        table.horizontalHeader().setStretchLastSection(True)
+        table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+        # Populate the table
+        for i, (model, score) in enumerate(results.items()):
+            model_item = QTableWidgetItem(model)
+            model_item.setTextAlignment(Qt.AlignCenter)
+
+            score_item = QTableWidgetItem(f"{score:.4f}")
+            score_item.setTextAlignment(Qt.AlignCenter)
+
+            # Determine label and color based on the score
+            if score > 0:
+                label_text = "Fake"
+                color = QColor("red")
+            else:
+                label_text = "Real"
+                color = QColor("green")
+            label_item = QTableWidgetItem(label_text)
+            label_item.setTextAlignment(Qt.AlignCenter)
+
+            # Set the text color for score and label
+            score_item.setForeground(color)
+            label_item.setForeground(color)
+
+            table.setItem(i, 0, model_item)
+            table.setItem(i, 1, score_item)
+            table.setItem(i, 2, label_item)
+
+        layout.addWidget(table)
+        self.setLayout(layout)
+
+
 class ProcessedImageWidget(QWidget):
     def __init__(self, input_image_path, parent=None):
         super().__init__(parent)
@@ -153,3 +222,161 @@ class VideoPlayerApp(QMainWindow):  # Assuming your class is named VideoPlayerAp
             # Additional setup and UI updates...
             self.play_button.show()
             self.play_button.setText("Play")
+
+
+def create_results_table(results):
+    """
+    Create a QTableWidget with a consistent style and layout for displaying model results.
+
+    Parameters:
+        results (dict): Keys are model names, values are scores.
+
+    Returns:
+        QTableWidget: The populated and styled table.
+    """
+    table = QTableWidget(len(results), 3)
+    table.setHorizontalHeaderLabels(["Model", "Score", "Label"])
+    table.setStyleSheet(
+        """
+        QTableWidget {
+            background-color: #f9f9f9;
+            gridline-color: #dcdcdc;
+            font-size: 18px;
+        }
+        QHeaderView::section {
+            background-color: #f0f0f0;
+            padding: 6px;
+            border: 1px solid #dcdcdc;
+            font-weight: bold;
+        }
+        """
+    )
+    table.setAlternatingRowColors(True)
+    table.verticalHeader().setVisible(False)
+    table.horizontalHeader().setStretchLastSection(True)
+    table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+
+    for i, (model, score) in enumerate(results.items()):
+        # Create and center-align items
+        model_item = QTableWidgetItem(model)
+        model_item.setTextAlignment(Qt.AlignCenter)
+
+        score_item = QTableWidgetItem(f"{score:.4f}")
+        score_item.setTextAlignment(Qt.AlignCenter)
+
+        # Determine the label and color based on the score
+        if score > 0:
+            label_text = "Fake"
+            color = QColor("red")
+        else:
+            label_text = "Real"
+            color = QColor("green")
+        label_item = QTableWidgetItem(label_text)
+        label_item.setTextAlignment(Qt.AlignCenter)
+
+        # Set the text color for score and label
+        score_item.setForeground(color)
+        label_item.setForeground(color)
+
+        table.setItem(i, 0, model_item)
+        table.setItem(i, 1, score_item)
+        table.setItem(i, 2, label_item)
+
+    return table
+
+
+# -------------------------------
+# Base class for Matplotlib-based widgets
+# -------------------------------
+class MatplotlibDisplayWidget(QWidget):
+    """
+    Base widget that manages a Matplotlib figure embedded in a FigureCanvas.
+    """
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.layout = QVBoxLayout(self)
+        self.canvas = None
+
+    def update_canvas(self, figure):
+        """
+        Clears any existing canvas and adds a new one displaying the given figure.
+
+        Parameters:
+            figure (matplotlib.figure.Figure): The figure to display.
+        """
+        if self.canvas:
+            self.layout.removeWidget(self.canvas)
+            self.canvas.deleteLater()
+        self.canvas = FigureCanvas(figure)
+        self.layout.addWidget(self.canvas)
+
+
+# -------------------------------
+# Widgets Using the Shared Components
+# -------------------------------
+class ProcessedMantraWidget(MatplotlibDisplayWidget):
+    """
+    Displays processed mantra results using a Matplotlib figure.
+    Expects 'results' to be a dict with keys: 'forgery_mask' and 'suspicious_regions'.
+    """
+
+    def __init__(self, results, parent=None):
+        super().__init__(parent)
+        figure = self.create_figure(results)
+        self.update_canvas(figure)
+
+    def create_figure(self, results):
+        """
+        Create a figure displaying the predicted forgery mask and suspicious regions.
+
+        Parameters:
+            results (dict): Contains the processed images.
+
+        Returns:
+            matplotlib.figure.Figure: The created figure.
+        """
+        figure = plt.figure(figsize=(10, 5))
+
+        # Forgery Mask
+        plt.subplot(1, 2, 1)
+        plt.imshow(results["forgery_mask"], cmap="gray")
+        plt.title("Predicted Forgery Mask")
+        plt.axis("off")
+
+        # Suspicious Regions
+        plt.subplot(1, 2, 2)
+        plt.imshow(results["suspicious_regions"])
+        plt.title("Suspicious Regions Detected")
+        plt.axis("off")
+
+        plt.tight_layout()
+        return figure
+
+
+class ProcessedImageWidget(MatplotlibDisplayWidget):
+    """
+    Displays a processed image using a Matplotlib figure.
+    Expects an input image path, from which an output path is derived.
+    """
+
+    def __init__(self, input_image_path, parent=None):
+        super().__init__(parent)
+        # Assume derive_output_path and display_processed_image are defined elsewhere
+        result_path = derive_output_path(input_image_path)
+        figure = display_processed_image(result_path)
+        self.update_canvas(figure)
+
+
+class ImageResultsWidget(QWidget):
+    """
+    Displays a table of model results. Results should be provided as a dictionary.
+    """
+
+    def __init__(self, results, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("Fusion Results")
+        layout = QVBoxLayout(self)
+        table = create_results_table(results)
+        layout.addWidget(table)
+        self.setLayout(layout)

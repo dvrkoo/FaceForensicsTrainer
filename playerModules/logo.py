@@ -3,7 +3,7 @@ from PyQt5.QtGui import QPixmap, QFont
 from PyQt5.QtCore import Qt
 from .models_dropdown import CheckableComboBox
 
-image_models = ["TruFor", "MantraNet"]
+image_models = ["TruFor", "MantraNet", "CLIP_BSID"]
 
 
 class LogoPlaceholderWidget(QWidget):

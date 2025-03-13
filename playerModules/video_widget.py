@@ -11,7 +11,7 @@ from .models_dropdown import CheckableComboBox
 import cv2
 
 video_models = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
-image_models = ["TruFor", "MantraNet"]
+image_models = ["TruFor", "MantraNet", "CLIP_BSID"]
 
 
 class VideoWidget(QWidget):
