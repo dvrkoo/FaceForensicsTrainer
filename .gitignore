@@ -7,6 +7,7 @@ ff_images/*
 Trufor/weights/trufor.pth.tar
 Trufor/output/
 playerModules/CLIP_WEIGHTS/
+trained_models/255x256-adm.pt
 
 SummaryWriter/
 freq/*

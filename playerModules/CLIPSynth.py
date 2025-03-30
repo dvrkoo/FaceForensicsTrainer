@@ -2,11 +2,7 @@
 
 import torch
 import os
-import pandas
 import numpy as np
-import tqdm
-import glob
-import sys
 import yaml
 from PIL import Image
 
@@ -150,7 +146,7 @@ def run_single_image(image_path, weights_dir, models_list, device):
 
 def predict(image_path):
     args = {}
-    args["device"] = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+    args["device"] = torch.device("cuda" if torch.cuda.is_available() else "mps")
     args["fusion"] = "soft_or_prob"
     args["models"] = ["clipdet_latent10k_plus", "Corvi2023"]
     # print current dir
@@ -159,10 +155,14 @@ def predict(image_path):
     results = run_single_image(
         image_path, args["weights_dir"], args["models"], args["device"]
     )
+    # rename model names to be more clear
+    results["CLIPDet"] = results.pop("clipdet_latent10k_plus")
+    results["Corvi"] = results.pop("Corvi2023")
     logits_array = np.array(list(results.values()))
 
     # Now, you can apply fusion. For a 1D array, axis=0 or axis=-1 is the same.
-    results["fusion"] = apply_fusion(logits_array, "soft_or_prob", axis=0)
+    results["Final Score"] = apply_fusion(logits_array, "soft_or_prob", axis=0)
+
     # transform the results from np.float32 to float
     results = {k: float(v) for k, v in results.items()}
     return results

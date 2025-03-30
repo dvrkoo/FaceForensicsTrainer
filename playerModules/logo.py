@@ -72,14 +72,14 @@ class HomeScreenWidget(QWidget):
     def switch_detection_mode(self):
         # Toggle between image and video detection mode
         if self.toggle_button.isChecked():
-            self.toggle_button.setText("Switch to Image Detection")
+            self.toggle_button.setText("Switch to Video Detection")
             self.load_button.setText("Load Image")
             self.player.detection_mode = "image"
             print(self.player.detection_mode)
             self.image_model_dropdown.show()
         else:
             self.image_model_dropdown.hide()
-            self.toggle_button.setText("Switch to Video Detection")
+            self.toggle_button.setText("Switch to Image Detection")
             self.load_button.setText("Load Video")
             self.player.detection_mode = "video"
 

@@ -8,16 +8,10 @@ os.environ.update(
 )
 import cv2
 import torch
-from PyQt5.QtGui import QImage, QPixmap, QFont
+from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import (
-    QApplication,
-    QFileDialog,
-    QLabel,
-    QVBoxLayout,
-    QWidget,
-)
-
+from PyQt5.QtWidgets import QApplication, QFileDialog, QVBoxLayout, QWidget, QScrollArea
+from PyQt5.QtWidgets import QSizePolicy
 from playerModules.wavelet_math import batch_packet_preprocessing
 from PyQt5.QtWidgets import QMessageBox
 from playerModules import model_functions
@@ -65,22 +59,32 @@ class VideoPlayerApp(QWidget):
         self.playing = False
         self.is_fake = False
         self.home_widget = HomeScreenWidget(self)
-        self.layout.addWidget(self.home_widget)
+        self.container_layout.addWidget(self.home_widget)
         self.video_prediction_widget = None
         self.detection_mode = "video"
 
     def setup_ui(self):
-        # Set up layout
         self.processed_image_widget = None
+        # Main layout for the entire widget
         self.layout = QVBoxLayout(self)
+        self.scroll_area = QScrollArea(self)
+        self.scroll_area.setWidgetResizable(True)
+        self.scroll_area.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
+        self.container_widget = QWidget()
+        self.container_widget.setSizePolicy(
+            QSizePolicy.Expanding, QSizePolicy.Expanding
+        )
+        self.container_layout = QVBoxLayout(self.container_widget)
         self.video_widget = VideoWidget(self)
-        self.video_widget.hide()
-        self.layout.addWidget(self.video_widget)
+        self.video_widget.hide()  # Initially hidden
+        self.container_layout.addWidget(self.video_widget)
+        self.scroll_area.setWidget(self.container_widget)
+        self.layout.addWidget(self.scroll_area)
 
     def setup_video_prediction(self):
         """Initializes the video prediction widget and adds it to the main layout."""
         self.video_prediction_widget = VideoPredictionWidget(self)
-        self.layout.addWidget(self.video_prediction_widget)
+        self.container_layout.addWidget(self.video_prediction_widget)
 
     def update_predictions(self, predictions):
         """Updates the predictions in the video prediction widget."""
@@ -193,6 +197,11 @@ class VideoPlayerApp(QWidget):
         selected_models = self.video_widget.image_model_dropdown.returnSelectedItems()
         if not selected_models:
             print("No model selected in the dropdown.")
+            # Show an error message and return
+            self.display_error(
+                "No model selected",
+                "Please select a model from the dropdown to proceed.",
+            )
             return
 
         selected_model = selected_models[
@@ -201,15 +210,36 @@ class VideoPlayerApp(QWidget):
         torch.cuda.empty_cache()
         # Perform actions based on the selected model
         if selected_model == "MantraNet":
-            figs = self.check_image_mantra(file_path)
-            self.processed_image_widget = ProcessedMantraWidget(figs)
+            try:
+                figs = self.check_image_mantra(file_path)
+                self.processed_image_widget = ProcessedMantraWidget(figs)
+            except Exception as e:
+                print(e)
+                self.display_error(
+                    "Error",
+                    "An error occurred while processing the image. Most likely, the image is too large to fit in memory.",
+                )
         elif selected_model == "TruFor":
-            load_model(file_path)
-            self.processed_image_widget = ProcessedImageWidget(file_path)
+            try:
+                self.models, self.detector = model_functions.load_freq_models()
+                self.processed_image_widget = ProcessedImageWidget(file_path)
+            except Exception as e:
+                print(e)
+                self.display_error(
+                    "Error",
+                    "An error occurred while processing the image. Most likely, the image is too large to fit in memory.",
+                )
         elif selected_model == "CLIP_BSID":
-            results = predict(file_path)
-            self.processed_image_widget = ImageResultsWidget(results)
-        self.layout.addWidget(self.processed_image_widget)
+            try:
+                results = predict(file_path)
+                self.processed_image_widget = ImageResultsWidget(results)
+            except Exception as e:
+                print(e)
+                self.display_error(
+                    "Error",
+                    "An error occurred while processing the image. Most likely, the image is too large to fit in memory.",
+                )
+        self.container_layout.addWidget(self.processed_image_widget)
         self.display_frame(image_rgb)
 
     def load_video(self, file_path):
