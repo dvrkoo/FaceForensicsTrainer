@@ -1,46 +1,132 @@
 import os
 import numpy as np
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-import matplotlib.pyplot as plt
-from PyQt5.QtWidgets import QVBoxLayout, QWidget, QFileDialog, QLabel
 import cv2
-from PyQt5.QtWidgets import QMainWindow
-from PyQt5.QtGui import QPixmap
+import matplotlib.pyplot as plt
+from matplotlib.figure import Figure
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+
+# PyQt imports
+from PyQt5.QtWidgets import (
+    QVBoxLayout, QWidget, QFileDialog, QLabel, QMainWindow,
+    QApplication, QTableWidget, QTableWidgetItem, QHeaderView,
+    QPushButton, QHBoxLayout, QMessageBox
+)
+from PyQt5.QtGui import QPixmap, QColor
 from PyQt5.QtCore import Qt
-from PyQt5.QtWidgets import QApplication, QTableWidget, QTableWidgetItem, QHeaderView
-from PyQt5.QtGui import QColor
+
+# Model information for info buttons
+MODEL_INFO = {
+    "MantraNet": """
+<b>MantraNet: Manipulation Tracing Network</b>
+
+MantraNet detects image forgeries by identifying inconsistencies across manipulated regions.
+
+<b>How it works:</b>
+- Uses a dual-branch architecture for manipulation trace extraction and anomaly detection
+- Analyzes local pixel patterns to detect manipulation artifacts
+- Outputs a forgery mask highlighting potential manipulations
+
+<b>Developed by:</b> Yue Wu et al. (2019)
+<b>Reference:</b> "ManTra-Net: Manipulation Tracing Network for Detection and Localization of Image Forgeries"
+    """,
+    
+    "TruFor": """
+<b>TruFor: Trustworthy Forensics Analysis</b>
+
+TruFor is a frequency-aware image forgery detection framework that identifies manipulated regions.
+
+<b>How it works:</b>
+- Analyzes both spatial and frequency domain information
+- Utilizes wavelet packet transforms to capture multi-scale frequency artifacts
+- Produces localization maps highlighting likely manipulated areas
+- Generates confidence maps showing detection reliability
+- Provides an overall forgery score from 0 (real) to 1 (fake)
+
+<b>Developed by:</b> Davide Cozzolino et al.
+<b>Reference:</b> "TruFor: Leveraging all-round clues for trustworthy image forgery detection and localization" 
+    """,
+    
+    "CLIP_BSID": """
+<b>CLIP-BSID: CLIP-Based Synthetic Image Detection</b>
+
+CLIP-BSID leverages CLIP (Contrastive Language-Image Pre-training) to detect AI-generated synthetic images.
+
+<b>How it works:</b>
+- Uses two specialized models:
+  • CLIPDet: Trained on latent diffusion model outputs (10k+ samples)
+  • Corvi: Optimized for modern generative models
+- Processes images through CLIP-compatible transformations
+- Each model outputs a logit score indicating synthetic probability
+- Final score combines individual model outputs using "soft-OR" probability fusion
+- Positive scores indicate likely synthetic content; negative for real
+
+<b>Interpretation:</b>
+- Higher positive scores indicate stronger confidence in AI generation
+- Results display individual model assessments and a final combined score
+- Uses semantic understanding to detect inconsistencies invisible to the human eye
+
+<b>Based on:</b> OpenAI's CLIP with specialized synthetic detection capabilities
+    """
+}
 
 
-class ProcessedMantraWidget(QWidget):
+class BaseVisualizationWidget(QWidget):
+    """Base class for visualization widgets with common functionality"""
+    
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.main_layout = QVBoxLayout(self)
+        self.canvas = None
+        
+        # Add info button row
+        self.button_layout = QHBoxLayout()
+        self.button_layout.addStretch(1)
+        self.main_layout.addLayout(self.button_layout)
+    
+    def add_info_button(self, model_name):
+        """Add an info/credits button for the specified model"""
+        info_button = QPushButton("ⓘ Credits/Info")
+        info_button.setFixedWidth(120)
+        info_button.clicked.connect(lambda: self.show_model_info(model_name))
+        self.button_layout.addWidget(info_button)
+        
+    def show_model_info(self, model_name):
+        """Display information about the model in a message box"""
+        info_box = QMessageBox()
+        info_box.setWindowTitle(f"About {model_name}")
+        info_box.setTextFormat(Qt.RichText)
+        info_box.setText(MODEL_INFO.get(model_name, "Information not available for this model."))
+        info_box.setStandardButtons(QMessageBox.Ok)
+        info_box.exec_()
+        
+    def update_canvas(self, figure):
+        """Update the canvas with a new matplotlib figure"""
+        # Clear previous canvas if it exists
+        if self.canvas:
+            self.main_layout.removeWidget(self.canvas)
+            self.canvas.deleteLater()
+            
+        # Add new canvas with the figure
+        self.canvas = FigureCanvas(figure)
+        self.main_layout.addWidget(self.canvas)
+
+
+class ProcessedMantraWidget(BaseVisualizationWidget):
+    """Widget to display MantraNet forgery detection results"""
+    
     def __init__(self, results, parent=None):
         super().__init__(parent)
-        self.layout = QVBoxLayout(self)
-        self.canvas = None  # Initially, there is no canvas
-
+        self.add_info_button("MantraNet")
         self.update_display(results)
 
     def update_display(self, results):
-        """Update the display with the processed image based on the input image path."""
-        # Clear the previous canvas if it exists
-        if self.canvas:
-            self.layout.removeWidget(self.canvas)
-            self.canvas.deleteLater()  # Safely remove the previous canvas
-
-        # Process the image and get the results
-
-        # Create a Matplotlib figure to display the results
+        """Update the display with MantraNet results"""
         figure = self.create_figure(results)
-
-        # Embed the Matplotlib figure in the widget
-        self.canvas = FigureCanvas(figure)
-        self.layout.addWidget(self.canvas)
+        self.update_canvas(figure)
 
     def create_figure(self, results):
-        """Create a Matplotlib figure to display the processed results."""
+        """Create visualization of MantraNet results"""
         figure = plt.figure(figsize=(20, 20))
-
-        # Original Image
 
         # Forgery Mask
         plt.subplot(1, 2, 1)
@@ -55,63 +141,94 @@ class ProcessedMantraWidget(QWidget):
         return figure
 
 
-def derive_output_path(input_image_path):
-    """Derive the corresponding output .npz file path from the input image path."""
-    # Extract the base name of the input image
-    base_name = os.path.splitext(os.path.basename(input_image_path))[0]
-    extension = os.path.splitext(os.path.basename(input_image_path))[1]
+class ProcessedImageWidget(BaseVisualizationWidget):
+    """Widget to display TruFor forgery detection results"""
+    
+    def __init__(self, input_image_path, parent=None):
+        super().__init__(parent)
+        self.add_info_button("TruFor")
+        self.update_display(input_image_path)
 
-    # Construct the corresponding output path with .npz extension
-    output_path = os.path.join("./Trufor/output", f"{base_name}{extension}.npz")
-
-    return output_path
-
-
-def display_processed_image(result_path):
-    """Create a Matplotlib figure displaying processed image results."""
-    result = np.load(result_path)
-
-    cols = 2
-    # Create a PyQt figure widget to show the results
-    fig = Figure(figsize=(8, 6))
-    axs = fig.subplots(1, cols)
-
-    # Set the title based on the score
-    fig.suptitle("Score: %.3f " % result["score"])
-    # fig.suptitle(
-    #     "Score: %.3f - %s"
-    #     % (result["score"], "Fake" if result["score"] > 0.5 else "Not Fake")
-    # )
-
-    axs[0].imshow(result["map"], cmap="RdBu_r", clim=[0, 1])
-    axs[0].set_title("Localization map")
-    axs[0].axis("off")  # Hide axis for better visualization
-
-    axs[1].imshow(result["conf"], cmap="gray", clim=[0, 1])
-    axs[1].set_title("Confidence map")
-    axs[1].axis("off")  # Hide axis for better visualization
-
-    # Return the figure to be embedded in a PyQt widget
-    return fig
+    def update_display(self, input_image_path):
+        """Update the display with TruFor processed results"""
+        # Get output path from input image
+        result_path = derive_output_path(input_image_path)
+        
+        # Create visualization and update canvas
+        figure = create_trufor_visualization(result_path)
+        self.update_canvas(figure)
 
 
-class ImageResultsWidget(QWidget):
+class ImageResultsWidget(BaseVisualizationWidget):
+    """Widget to display CLIP-BSID synthetic image detection results"""
+    
+    # Constants for table configuration
+    COLUMNS = ["Model", "Score", "Label"]
+    FAKE_COLOR = QColor("red")
+    REAL_COLOR = QColor("green")
+    
     def __init__(self, results, parent=None):
         """
+        Initialize widget with detection results
+        
         Parameters:
-            results (dict): A dictionary with keys as model names and values as scores.
+            results (dict): Dictionary with model names as keys and scores as values
+                           (typically contains 'CLIPDet', 'Corvi', and 'Final Score')
         """
-        super(ImageResultsWidget, self).__init__(parent)
-        self.setWindowTitle("Fusion Results")
-        layout = QVBoxLayout(self)
+        super().__init__(parent)
+        self.add_info_button("CLIP_BSID")
+        self.setWindowTitle("Synthetic Image Detection Results")
+        
+        # Create and configure the results table
+        results_table = self.create_results_table(results)
+        self.main_layout.addWidget(results_table)
 
-        # Create a table widget with three columns: Model, Score, Label
-        table = QTableWidget(len(results), 3)
-        table.setHorizontalHeaderLabels(["Model", "Score", "Label"])
-
-        # Apply styling using a stylesheet
-        table.setStyleSheet(
-            """
+    def create_results_table(self, results):
+        """Create a formatted table displaying model results"""
+        # Create table with headers
+        table = QTableWidget(len(results), len(self.COLUMNS))
+        table.setHorizontalHeaderLabels(self.COLUMNS)
+        
+        # Apply styling
+        self.apply_table_styling(table)
+        
+        # Populate table with data
+        for row_idx, (model_name, score) in enumerate(results.items()):
+            self._add_result_row(table, row_idx, model_name, score)
+            
+        return table
+    
+    def _add_result_row(self, table, row_idx, model_name, score):
+        """Add a single result row to the table"""
+        # Create items
+        model_item = QTableWidgetItem(model_name)
+        score_item = QTableWidgetItem(f"{score:.4f}")
+        
+        # Determine if the image is fake (positive score indicates synthetic)
+        is_fake = score > 0
+        label_text = "Synthetic" if is_fake else "Real"
+        result_color = self.FAKE_COLOR if is_fake else self.REAL_COLOR
+        
+        # Create label item
+        label_item = QTableWidgetItem(label_text)
+        
+        # Apply center alignment to all items
+        for item in [model_item, score_item, label_item]:
+            item.setTextAlignment(Qt.AlignCenter)
+        
+        # Apply color to score and label
+        score_item.setForeground(result_color)
+        label_item.setForeground(result_color)
+        
+        # Add items to table
+        table.setItem(row_idx, 0, model_item)
+        table.setItem(row_idx, 1, score_item)
+        table.setItem(row_idx, 2, label_item)
+        
+    def apply_table_styling(self, table):
+        """Apply consistent styling to results table"""
+        # Set table style
+        table.setStyleSheet("""
             QTableWidget {
                 background-color: #f9f9f9;
                 gridline-color: #dcdcdc;
@@ -123,102 +240,45 @@ class ImageResultsWidget(QWidget):
                 border: 1px solid #dcdcdc;
                 font-weight: bold;
             }
-        """
-        )
+        """)
+        
+        # Configure table appearance
         table.setAlternatingRowColors(True)
         table.verticalHeader().setVisible(False)
         table.horizontalHeader().setStretchLastSection(True)
         table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
 
-        # Populate the table
-        for i, (model, score) in enumerate(results.items()):
-            model_item = QTableWidgetItem(model)
-            model_item.setTextAlignment(Qt.AlignCenter)
 
-            score_item = QTableWidgetItem(f"{score:.4f}")
-            score_item.setTextAlignment(Qt.AlignCenter)
-
-            # Determine label and color based on the score
-            if score > 0:
-                label_text = "Fake"
-                color = QColor("red")
-            else:
-                label_text = "Real"
-                color = QColor("green")
-            label_item = QTableWidgetItem(label_text)
-            label_item.setTextAlignment(Qt.AlignCenter)
-
-            # Set the text color for score and label
-            score_item.setForeground(color)
-            label_item.setForeground(color)
-
-            table.setItem(i, 0, model_item)
-            table.setItem(i, 1, score_item)
-            table.setItem(i, 2, label_item)
-
-        layout.addWidget(table)
-        self.setLayout(layout)
+def derive_output_path(input_image_path):
+    """Get the corresponding output .npz file path for a given input image"""
+    # Extract base name and extension
+    base_name = os.path.splitext(os.path.basename(input_image_path))[0]
+    extension = os.path.splitext(os.path.basename(input_image_path))[1]
+    
+    # Construct output path
+    return os.path.join("./Trufor/output", f"{base_name}{extension}.npz")
 
 
-class ProcessedImageWidget(QWidget):
-    def __init__(self, input_image_path, parent=None):
-        super().__init__(parent)
-        self.layout = QVBoxLayout(self)
-        self.canvas = None  # Initially, there is no canvas
-
-        self.update_display(input_image_path)
-
-    def update_display(self, input_image_path):
-        """Update the display with the processed image based on the input image path."""
-        # Derive the output image path from the input image path
-        result_path = derive_output_path(input_image_path)
-
-        # Clear the previous canvas if it exists
-        if self.canvas:
-            self.layout.removeWidget(self.canvas)
-            self.canvas.deleteLater()  # Safely remove the previous canvas
-
-        # Display the processed image in the widget
-        figure = display_processed_image(result_path)
-        self.canvas = FigureCanvas(figure)
-
-        # Add the canvas to the widget layout
-        self.layout.addWidget(self.canvas)
-
-
-class VideoPlayerApp(QMainWindow):  # Assuming your class is named VideoPlayerApp
-    def __init__(self):
-        super().__init__()
-        # Your initialization code here
-        self.layout = QVBoxLayout()  # Example layout, adjust as needed
-        self.processed_widget = None  # Initialize your processed widget
-
-    def load_video(self):
-        # Open a file dialog to choose a video or image file
-        file_dialog = QFileDialog()
-        file_path, _ = file_dialog.getOpenFileName(
-            self,
-            "Open Video/Image File",
-            "",
-            "Video Files (*.mp4 *.avi *.jpg *.png)",
-        )
-        if file_path:
-            # If a file is selected, initialize video capture
-            self.cap = cv2.VideoCapture(file_path)
-
-            # Check if it's an image by looking at file extension
-            if file_path.endswith((".jpg", ".png")):
-                self.image = True
-                if self.processed_widget is None:
-                    self.processed_widget = ProcessedImageWidget(file_path)
-                    self.layout.addWidget(self.processed_widget)
-                else:
-                    self.processed_widget.update_display(file_path)
-            else:
-                # Handle video loading (you can implement video handling logic here)
-                if self.processed_widget:
-                    self.processed_widget.hide()  # Hide processed widget for video
-
-            # Additional setup and UI updates...
-            self.play_button.show()
-            self.play_button.setText("Play")
+def create_trufor_visualization(result_path):
+    """Create a visualization of TruFor results"""
+    # Load result data
+    result_data = np.load(result_path)
+    
+    # Create figure with subplots
+    fig = Figure(figsize=(8, 6))
+    axes = fig.subplots(1, 2)
+    
+    # Set title with score
+    fig.suptitle(f"Score: {result_data['score']:.3f}")
+    
+    # Draw localization map
+    axes[0].imshow(result_data["map"], cmap="RdBu_r", clim=[0, 1])
+    axes[0].set_title("Localization map")
+    axes[0].axis("off")
+    
+    # Draw confidence map
+    axes[1].imshow(result_data["conf"], cmap="gray", clim=[0, 1])
+    axes[1].set_title("Confidence map")
+    axes[1].axis("off")
+    
+    return fig

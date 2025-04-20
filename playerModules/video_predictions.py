@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import (
     QPushButton,
     QScrollArea,
     QHBoxLayout,
+    QMessageBox
 )
 from .progress_bar import ProgressBarWithTimeLabel
 from .prediction_bar import PredictionsBarGraph
@@ -65,7 +66,7 @@ class VideoPredictionWidget(QWidget):
 
             # Create labels for prediction categories
             self.faceswap = QLabel("Faceswap : ")
-            self.faceswap.setFixedWidth(200)
+            self.faceswap.setFixedWidth(220)
             self.text_widget.addWidget(self.faceswap, 0, 0, 1, 1)
 
             self.deepfake = QLabel("Deepfake : ")
@@ -81,6 +82,7 @@ class VideoPredictionWidget(QWidget):
             self.text_widget.addWidget(self.faceshift, 4, 0, 1, 1)
 
             self.credits = QPushButton("Credits")
+            self.credits.clicked.connect(self.show_credits)
             self.text_widget.addWidget(self.credits, 5, 0, 1, 1)
 
             self.bottom_layout.addLayout(self.text_widget)
@@ -141,3 +143,34 @@ class VideoPredictionWidget(QWidget):
         self.neuraltextures_bar.past_predictions = [0]
         self.face2face_bar.past_predictions = [0]
         self.faceshift_bar.past_predictions = [0]
+
+    def show_credits(self):
+        """Display credits information for the deepfake detection models."""
+        credits_info = QMessageBox()
+        credits_info.setWindowTitle("DeepFake Detection Models Credits")
+        credits_info.setTextFormat(Qt.RichText)
+        
+        credits_text = """
+        <h3>DeepFake Detection Models</h3>
+        
+        <p><b>Pixel-Domain Models:</b></p>
+        <ul>
+            <li>Trained following the FaceForensics++ (FF++) methodology</li>
+            <li>Models: Faceswap, Deepfake, NeuralTextures, Face2Face, FaceShifter</li>
+            <li>Standard CNN architecture focusing on pixel-level artifacts</li>
+        </ul>
+        
+        <p><b>Frequency-Domain Models:</b></p>
+        <ul>
+            <li>Custom implementation by Niccolò Marini</li>
+            <li>Uses modified ResNet architecture with wavelet packet transform</li>
+            <li>Captures multi-scale frequency artifacts that are often invisible in pixel domain</li>
+            <li>Improved robustness against compression and post-processing</li>
+        </ul>
+        
+        <p><i>Switch between domains using the "Switch to Frequency/Pixel Domain" button</i></p>
+        """
+        
+        credits_info.setText(credits_text)
+        credits_info.setStandardButtons(QMessageBox.Ok)
+        credits_info.exec_()

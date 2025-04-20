@@ -504,16 +504,164 @@ class VideoPlayerApp(QWidget):
             2,
         )
 
+def apply_stylesheet():
+    """Apply a custom Catppuccin Latte stylesheet to the application."""
+    QApplication.setStyle("Fusion")
+    
+    # Enable high-DPI scaling attributes
+    QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
+    QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
+    
+    # Force integer scaling on macOS
+    os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] = "Round"
+
+    # Catppuccin Latte color palette (light theme)
+    base = "#eff1f5"      # Background
+    mantle = "#e6e9ef"    # Slightly darker background
+    crust = "#dce0e8"     # Border color
+    text = "#4c4f69"      # Text color
+    subtext = "#5c5f77"   # Dimmed text
+    surface0 = "#ccd0da"  # Surface
+    surface1 = "#bcc0cc"  # Higher surface
+    blue = "#1e66f5"      # Blue
+    lavender = "#7287fd"  # Lavender
+    mauve = "#8839ef"     # Purple
+    green = "#40a02b"     # Green
+    peach = "#fe640b"     # Peach
+
+    stylesheet = f"""
+    QWidget {{
+        background-color: {base};
+        color: {text};
+        font-family: '-apple-system', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
+        font-size: 14px;
+    }}
+    
+    QPushButton {{
+        background-color: {surface0};
+        border: 1px solid {surface1};
+        border-radius: 4px;
+        padding: 6px 14px;
+        color: {text};
+        font-weight: normal;
+        min-height: 28px;
+    }}
+    
+    QPushButton:hover {{
+        background-color: {surface1};
+        border-color: {lavender};
+    }}
+    
+    QPushButton:pressed {{
+        background-color: {crust};
+        border-color: {blue};
+    }}
+    
+    QPushButton:checked {{
+        background-color: {lavender};
+        color: {base};
+    }}
+    
+    QLabel {{
+        color: {text};
+    }}
+    
+    QProgressBar {{
+        border: 1px solid {surface1};
+        border-radius: 4px;
+        text-align: center;
+        background-color: {surface0};
+        color: {text};
+    }}
+    
+    QProgressBar::chunk {{
+        background-color: {blue};
+        border-radius: 2px;
+    }}
+    
+    QScrollBar {{
+        background-color: {surface0};
+        width: 12px;
+        border-radius: 6px;
+    }}
+    
+    QScrollBar::handle {{
+        background-color: {surface1};
+        border-radius: 6px;
+        min-height: 30px;
+    }}
+    
+    QScrollBar::handle:hover {{
+        background-color: {lavender};
+    }}
+    
+    QComboBox {{
+        border: 1px solid {surface1};
+        border-radius: 4px;
+        padding: 4px;
+        background-color: {mantle};
+        color: {text};
+        min-height: 28px;
+    }}
+    
+    QComboBox::drop-down {{
+        border: 0px;
+        background-color: {surface0};
+        width: 24px;
+        border-top-right-radius: 3px;
+        border-bottom-right-radius: 3px;
+    }}
+    
+    QCheckBox {{
+        color: {text};
+        spacing: 5px;
+    }}
+    
+    QCheckBox::indicator {{
+        width: 16px;
+        height: 16px;
+        border: 1px solid {surface1};
+        border-radius: 3px;
+        background-color: {mantle};
+    }}
+    
+    QCheckBox::indicator:checked {{
+        background-color: {lavender};
+    }}
+    
+    QGroupBox {{
+        border: 1px solid {surface1};
+        border-radius: 4px;
+        margin-top: 0.5em;
+        padding-top: 0.5em;
+    }}
+    
+    QGroupBox::title {{
+        subcontrol-origin: margin;
+        left: 10px;
+        padding: 0 3px;
+        color: {subtext};
+    }}
+    """
+
+    QApplication.instance().setStyleSheet(stylesheet)
+
 
 if __name__ == "__main__":
-    if torch.backends.mps.is_available():
-        device = torch.device("mps")
-    elif torch.cuda.is_available():
-        device = torch.device("cuda")
-    else:
-        device = torch.device("cpu")
-    QApplication.setStyle("Fusion")
+    # Set environment variables first
+    os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
+    
+    # Set up the QApplication
     app = QApplication(sys.argv)
+    
+    # Apply stylesheet after creating the application
+    apply_stylesheet()
+    
+    # Create and show the main window
     window = VideoPlayerApp()
     window.show()
+
+    # Start the application
     sys.exit(app.exec_())
+
+
