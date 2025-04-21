@@ -38,7 +38,6 @@ models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshif
 
 
 class VideoPlayerApp(QWidget):
-
     def __init__(self):
         super().__init__()
         self.video_writer = False
@@ -307,7 +306,6 @@ class VideoPlayerApp(QWidget):
         error_box.exec_()  # Show the message box
 
     def load_media(self):
-
         print(self.detection_mode)
         # Open a file dialog to choose a video or image file
         file_dialog = QFileDialog()
@@ -347,7 +345,6 @@ class VideoPlayerApp(QWidget):
             self.timer.stop()
 
     def timerEvent(self):
-
         self.selected_models = self.video_widget.model_dropdown.returnSelectedItems()
 
         # Initialize VideoWriter if not already done
@@ -504,30 +501,31 @@ class VideoPlayerApp(QWidget):
             2,
         )
 
+
 def apply_stylesheet():
     """Apply a custom Catppuccin Latte stylesheet to the application."""
     QApplication.setStyle("Fusion")
-    
+
     # Enable high-DPI scaling attributes
     QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps)
     QApplication.setAttribute(Qt.AA_EnableHighDpiScaling)
-    
+
     # Force integer scaling on macOS
     os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] = "Round"
 
     # Catppuccin Latte color palette (light theme)
-    base = "#eff1f5"      # Background
-    mantle = "#e6e9ef"    # Slightly darker background
-    crust = "#dce0e8"     # Border color
-    text = "#4c4f69"      # Text color
-    subtext = "#5c5f77"   # Dimmed text
+    base = "#eff1f5"  # Background
+    mantle = "#e6e9ef"  # Slightly darker background
+    crust = "#dce0e8"  # Border color
+    text = "#4c4f69"  # Text color
+    subtext = "#5c5f77"  # Dimmed text
     surface0 = "#ccd0da"  # Surface
     surface1 = "#bcc0cc"  # Higher surface
-    blue = "#1e66f5"      # Blue
+    blue = "#1e66f5"  # Blue
     lavender = "#7287fd"  # Lavender
-    mauve = "#8839ef"     # Purple
-    green = "#40a02b"     # Green
-    peach = "#fe640b"     # Peach
+    mauve = "#8839ef"  # Purple
+    green = "#40a02b"  # Green
+    peach = "#fe640b"  # Peach
 
     stylesheet = f"""
     QWidget {{
@@ -642,6 +640,54 @@ def apply_stylesheet():
         padding: 0 3px;
         color: {subtext};
     }}
+        QScrollBar:vertical {{ /* Explicitly target vertical */
+        background-color: {mantle}; /* Use a slightly darker background for track: #e6e9ef */
+        width: 14px;              /* Maybe slightly wider */
+        border-radius: 7px;
+        border: 1px solid {crust}; /* Add a subtle border: #dce0e8 */
+        margin: 1px; /* Add tiny margin */
+    }}
+    QScrollBar::handle:vertical {{ /* Explicitly target vertical handle */
+        background-color: {subtext}; /* Use a much darker handle: #5c5f77 */
+        min-height: 30px;
+        border-radius: 6px;
+        border: 1px solid {text};  /* Add handle border: #4c4f69 */
+    }}
+    QScrollBar::handle:vertical:hover {{
+        background-color: {blue}; /* Keep hover distinct: #1e66f5 */
+        border-color: {blue};
+    }}
+
+    /* Add equivalent styles if you might have horizontal scrollbars */
+    QScrollBar:horizontal {{
+        background-color: {mantle};
+        height: 14px;
+        border-radius: 7px;
+        border: 1px solid {crust};
+        margin: 1px;
+    }}
+    QScrollBar::handle:horizontal {{
+        background-color: {subtext};
+        min-width: 30px;
+        border-radius: 6px;
+        border: 1px solid {text};
+    }}
+    QScrollBar::handle:horizontal:hover {{
+        background-color: {blue};
+        border-color: {blue};
+    }}
+
+    /* Hide the default arrow buttons if you don't need them */
+    QScrollBar::add-line, QScrollBar::sub-line {{
+        background: none;
+        border: none;
+        height: 0px;
+        width: 0px;
+    }}
+    /* Style the page areas (track area not covered by handle) */
+    QScrollBar::add-page, QScrollBar::sub-page {{
+        background: none; /* Make page area transparent */
+    }}
     """
 
     QApplication.instance().setStyleSheet(stylesheet)
@@ -650,18 +696,16 @@ def apply_stylesheet():
 if __name__ == "__main__":
     # Set environment variables first
     os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
-    
+
     # Set up the QApplication
     app = QApplication(sys.argv)
-    
+
     # Apply stylesheet after creating the application
     apply_stylesheet()
-    
+
     # Create and show the main window
     window = VideoPlayerApp()
     window.show()
 
     # Start the application
     sys.exit(app.exec_())
-
-
