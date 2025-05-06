@@ -35,6 +35,7 @@ MAX_FRAME_HEIGHT = 600
 
 
 models_index = ["faceswap", "deepfake", "neuraltextures", "face2face", "faceshifter"]
+device = torch.device("cuda" if torch.cuda.is_available() else "mps")
 
 
 class VideoPlayerApp(QWidget):
@@ -220,7 +221,6 @@ class VideoPlayerApp(QWidget):
                 )
         elif selected_model == "TruFor":
             try:
-                self.models, self.detector = model_functions.load_freq_models()
                 self.processed_image_widget = ProcessedImageWidget(file_path)
             except Exception as e:
                 print(e)
@@ -452,6 +452,7 @@ class VideoPlayerApp(QWidget):
     def resize_frame(self, frame, max_width, max_height):
         h, w = frame.shape[:2]
         scale = min(max_width / w, max_height / h, 1.0)  # Ensure it never scales up
+        scale = scale * 0.7 if self.image else scale
         return cv2.resize(
             frame, (int(w * scale), int(h * scale)), interpolation=cv2.INTER_AREA
         )
